@@ -8,7 +8,7 @@ import request from 'supertest';
 import axios from 'axios';
 
 import { AppModule } from '../../src/app.module';
-import { LeaveType, OutboxEventType, RequestState } from '../../src/domain/enums';
+import { LeaveType } from '../../src/domain/enums';
 import { HcmClient } from '../../src/modules/hcm-client/hcm-client.service';
 import { Balance } from '../../src/modules/balance/entities/balance.entity';
 import { Outbox } from '../../src/modules/time-off/entities/outbox.entity';
@@ -31,6 +31,16 @@ async function waitForHcm(baseUrl: string, timeoutMs: number): Promise<void> {
   throw new Error('Timed out waiting for hcm-mock');
 }
 
+async function waitForRequestState(ds: DataSource, id: string, state: string, timeoutMs: number): Promise<void> {
+  const start = Date.now();
+  while (Date.now() - start < timeoutMs) {
+    const row = await ds.getRepository(TimeOffRequest).findOneBy({ id });
+    if (row?.state === state) return;
+    await sleep(250);
+  }
+  throw new Error(`Timed out waiting for request state ${state}`);
+}
+
 function startHcmMock(port: number): ChildProcess {
   return spawn('npm', ['run', 'start:dev'], {
     cwd: resolve(__dirname, '../../../..', 'apps/hcm-mock'),
@@ -38,7 +48,7 @@ function startHcmMock(port: number): ChildProcess {
       ...process.env,
       PORT: String(port),
       NODE_ENV: 'test',
-      DB_PATH: `./hcm-outbox-retry-${port}.sqlite`,
+      DB_PATH: `./hcm-5xx-${port}.sqlite`,
     },
     shell: true,
     stdio: 'ignore',
@@ -68,10 +78,10 @@ function makeHcmClient(baseURL: string): HcmClient {
   } as HcmClient;
 }
 
-describe('outbox-retry.spec', () => {
+describe('hcm-5xx.spec (FS-2)', () => {
   jest.setTimeout(120000);
 
-  const hcmPort = 4104;
+  const hcmPort = 4102;
   const hcmBaseUrl = `http://localhost:${hcmPort}`;
   let hcmProc: ChildProcess;
   let hcm: HcmMockControl;
@@ -104,18 +114,18 @@ describe('outbox-retry.spec', () => {
     if (hcmProc?.pid) hcmProc.kill('SIGTERM');
   });
 
-  it('PROCESSING records older than 30s are re-queued and processed', async () => {
+  it('HCM 500 retries 3 times then fails and restores pending', async () => {
     const now = new Date().toISOString();
-    await hcm.setBalance('emp-retry-1', 'loc-nyc', 'ANNUAL', { totalDays: 5, usedDays: 0, hcmLastUpdatedAt: now });
+    await hcm.setBalance('emp-5xx-1', 'loc-nyc', 'ANNUAL', { totalDays: 5, usedDays: 0, hcmLastUpdatedAt: now });
     await ds.getRepository(Balance).upsert(
       {
         id: randomUUID(),
-        employeeId: 'emp-retry-1',
+        employeeId: 'emp-5xx-1',
         locationId: 'loc-nyc',
         leaveType: LeaveType.ANNUAL,
         totalDays: 5,
         usedDays: 0,
-        pendingDays: 1,
+        pendingDays: 0,
         hcmLastUpdatedAt: now,
         syncedAt: now,
         createdAt: now,
@@ -123,57 +133,39 @@ describe('outbox-retry.spec', () => {
       },
       ['employeeId', 'locationId', 'leaveType'],
     );
-    const reqId = randomUUID();
-    await ds.getRepository(TimeOffRequest).insert({
-      id: reqId,
-      idempotencyKey: randomUUID(),
-      employeeId: 'emp-retry-1',
-      locationId: 'loc-nyc',
-      leaveType: LeaveType.ANNUAL,
-      startDate: '2025-03-07',
-      endDate: '2025-03-08',
-      daysRequested: 1,
-      state: RequestState.PENDING_HCM,
-      lastOutboxEvent: OutboxEventType.HCM_DEDUCT,
-      hcmExternalRef: reqId,
-      hcmTransactionId: null,
-      hcmResponseCode: null,
-      hcmResponseBody: null,
-      rejectionReason: null,
-      failureReason: null,
-      retryCount: 0,
-      createdBy: 'emp-retry-1',
-      approvedBy: null,
-      createdAt: now,
-      updatedAt: now,
-    });
-    await ds.getRepository(Outbox).insert({
-      id: randomUUID(),
-      eventType: OutboxEventType.HCM_DEDUCT,
-      payload: JSON.stringify({
-        externalRef: reqId,
-        employeeId: 'emp-retry-1',
+    await hcm.setNextCallBehavior('deduct', '500', 3);
+
+    const create = await request(app.getHttpServer())
+      .post('/time-off/requests')
+      .set('X-Employee-Id', 'emp-5xx-1')
+      .set('Idempotency-Key', randomUUID())
+      .send({
         locationId: 'loc-nyc',
         leaveType: 'ANNUAL',
-        daysRequested: 1,
         startDate: '2025-03-07',
         endDate: '2025-03-08',
-      }),
-      requestId: reqId,
-      status: 'PROCESSING',
-      attempts: 0,
-      lastAttemptedAt: new Date(Date.now() - 31_000).toISOString(),
-      lastError: null,
-      createdAt: now,
-      processAfter: now,
+        daysRequested: 1,
+      });
+    expect(create.status).toBe(202);
+
+    await waitForRequestState(ds, create.body.requestId, 'FAILED', 25000);
+
+    const req = await ds.getRepository(TimeOffRequest).findOneByOrFail({ id: create.body.requestId });
+    const outbox = await ds.getRepository(Outbox).findOneByOrFail({ requestId: create.body.requestId });
+    const bal = await ds.getRepository(Balance).findOneByOrFail({
+      employeeId: 'emp-5xx-1',
+      locationId: 'loc-nyc',
+      leaveType: LeaveType.ANNUAL,
     });
 
-    await sleep(2500);
+    expect(req.state).toBe('FAILED');
+    expect(outbox.attempts).toBe(3);
+    expect(outbox.status).toBe('FAILED');
+    expect(bal.pendingDays).toBe(0);
+    expect(bal.usedDays).toBe(0);
 
-    const outbox = await ds.getRepository(Outbox).findOneByOrFail({ requestId: reqId });
-    const req = await ds.getRepository(TimeOffRequest).findOneByOrFail({ id: reqId });
-    expect(outbox.status).toBe('DONE');
-    expect(req.state).toBe('APPROVED');
+    const calls = await hcm.getCallLog();
+    const deductCalls = calls.filter((c) => c.endpoint === 'deduct');
+    expect(deductCalls.length).toBeGreaterThanOrEqual(3);
   });
 });
-

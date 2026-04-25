@@ -4,6 +4,7 @@ import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { GlobalExceptionFilter } from './filters/global-exception.filter';
+import { HealthController } from './health.controller';
 import { BalanceModule } from './modules/balance/balance.module';
 import { IdempotencyInterceptor } from './modules/idempotency/idempotency.interceptor';
 import { IdempotencyModule } from './modules/idempotency/idempotency.module';
@@ -28,6 +29,7 @@ import { TimeOffModule } from './modules/time-off/time-off.module';
     SyncModule,
     TimeOffModule,
   ],
+  controllers: [HealthController],
   providers: [
     { provide: APP_FILTER, useClass: GlobalExceptionFilter },
     { provide: APP_INTERCEPTOR, useClass: IdempotencyInterceptor },

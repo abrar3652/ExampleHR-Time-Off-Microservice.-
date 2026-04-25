@@ -156,9 +156,9 @@ export class ControlController {
 
   @Post('/reset')
   async reset(): Promise<{ ok: true }> {
-    await this.dataSource.getRepository(HcmCallLog).delete({});
-    await this.dataSource.getRepository(HcmTransaction).delete({});
-    await this.dataSource.getRepository(HcmBalance).delete({});
+    await this.dataSource.getRepository(HcmCallLog).clear();
+    await this.dataSource.getRepository(HcmTransaction).clear();
+    await this.dataSource.getRepository(HcmBalance).clear();
     await this.chaos.resetAll();
     await this.clock.reset();
     return { ok: true };
