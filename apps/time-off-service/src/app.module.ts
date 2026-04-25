@@ -9,7 +9,9 @@ import { TypeOrmModule } from '@nestjs/typeorm';
       type: 'better-sqlite3',
       database: process.env.DB_PATH ?? './data/time_off.sqlite',
       enableWAL: true,
-      busyTimeout: 5000,
+      prepareDatabase: (db: { pragma: (sql: string) => unknown }) => {
+        db.pragma('busy_timeout = 5000');
+      },
     }),
   ],
 })
