@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ExampleHR Time-Off Microservice — TRD</title>
+  <style>
+    :root {
+      --bg: #0b1020;
+      --panel: #121a2b;
+      --text: #e5e7eb;
+      --muted: #9ca3af;
+      --line: #243047;
+      --accent: #60a5fa;
+      --card: #0f172a;
+      --code: #111827;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+      color: var(--text);
+      background: var(--bg);
+      line-height: 1.5;
+    }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .layout { display: grid; grid-template-columns: 300px 1fr; min-height: 100vh; }
+    aside {
+      position: sticky; top: 0; height: 100vh; overflow: auto;
+      border-right: 1px solid var(--line); background: var(--panel); padding: 18px 16px;
+    }
+    .brand { font-weight: 700; margin-bottom: 12px; font-size: 15px; }
+    .toc-title { color: var(--muted); text-transform: uppercase; letter-spacing: .08em; font-size: 11px; margin: 14px 0 8px; }
+    .toc a { display: block; padding: 6px 8px; border-radius: 6px; color: var(--text); font-size: 14px; }
+    .toc a:hover { background: #1b2740; text-decoration: none; }
+    main { padding: 28px; max-width: 1100px; }
+    h1, h2, h3 { margin-top: 1.2em; margin-bottom: .5em; }
+    h1 { font-size: 30px; margin-top: 0; }
+    h2 { font-size: 24px; border-bottom: 1px solid var(--line); padding-bottom: 6px; }
+    h3 { font-size: 19px; }
+    p, li { color: #d1d5db; }
+    .card {
+      border: 1px solid var(--line); background: var(--card);
+      border-radius: 10px; padding: 14px; margin: 10px 0 14px;
+    }
+    table { border-collapse: collapse; width: 100%; margin: 10px 0 14px; font-size: 14px; }
+    th, td { border: 1px solid var(--line); padding: 9px 10px; text-align: left; vertical-align: top; }
+    th { background: #18243a; }
+    code { background: #111827; padding: 2px 6px; border-radius: 5px; color: #c4b5fd; }
+    pre {
+      background: var(--code); border: 1px solid var(--line); border-radius: 10px;
+      padding: 12px; overflow: auto; color: #e5e7eb;
+    }
+    pre code { background: transparent; padding: 0; border-radius: 0; color: inherit; }
+    .endpoint { border-left: 4px solid #3b82f6; }
+    .muted { color: var(--muted); }
+    details { border: 1px solid var(--line); border-radius: 10px; margin: 8px 0; background: var(--card); }
+    summary { cursor: pointer; padding: 10px 12px; font-weight: 600; }
+    details > div { padding: 0 12px 12px; }
+    .top-toc { border: 1px solid var(--line); background: var(--panel); border-radius: 10px; padding: 12px; }
+
+    @media (max-width: 980px) {
+      .layout { grid-template-columns: 1fr; }
+      aside { position: relative; height: auto; border-right: 0; border-bottom: 1px solid var(--line); }
+      main { padding: 18px; }
+    }
+
+    @media print {
+      body { background: #fff; color: #111; }
+      aside { display: none; }
+      .layout { display: block; }
+      main { max-width: none; padding: 0; }
+      h2 { page-break-before: always; border-color: #ddd; }
+      .card, pre, table, details { break-inside: avoid; }
+      a { color: #111; text-decoration: underline; }
+    }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <aside>
+      <div class="brand">ExampleHR — TRD</div>
+      <div class="toc-title">Navigation</div>
+      <nav class="toc">
+        <a href="#exec">1. Executive Summary</a>
+        <a href="#architecture">2. System Architecture</a>
+        <a href="#rules">3. System Invariants / Rules</a>
+        <a href="#data-model">4. Data Model</a>
+        <a href="#api">5. API Contracts</a>
+        <a href="#decisions">6. Challenges & Decisions</a>
+        <a href="#sync">7. Sync Strategy</a>
+        <a href="#concurrency">8. Concurrency & Idempotency</a>
+        <a href="#failure">9. Failure Handling</a>
+        <a href="#tests">10. Test Strategy & Coverage</a>
+        <a href="#mock-hcm">11. Mock HCM Design</a>
+      </nav>
+    </aside>
+
+    <main>
+      <h1>ExampleHR Time-Off Microservice — Technical Requirements Document</h1>
+      <p class="muted">Standalone consolidated TRD from <code>docs/*.md</code> and <code>docs/hcm-mock/*.md</code>.</p>
+
+      <div class="top-toc">
+        <strong>Table of Contents</strong>
+        <ol>
+          <li><a href="#exec">Executive Summary</a></li>
+          <li><a href="#architecture">System Architecture</a></li>
+          <li><a href="#rules">System Invariants / Rules</a></li>
+          <li><a href="#data-model">Data Model</a></li>
+          <li><a href="#api">API Contracts</a></li>
+          <li><a href="#decisions">Challenges & Decisions</a></li>
+          <li><a href="#sync">Sync Strategy</a></li>
+          <li><a href="#concurrency">Concurrency & Idempotency</a></li>
+          <li><a href="#failure">Failure Handling</a></li>
+          <li><a href="#tests">Test Strategy & Coverage</a></li>
+          <li><a href="#mock-hcm">Mock HCM Design</a></li>
+        </ol>
+      </div>
+
+      <h2 id="exec">1) Executive Summary</h2>
+      <p>
+        ExampleHR’s time-off service is a NestJS microservice that manages leave requests while treating HCM as the single source of truth for balances. The local SQLite database is intentionally a cache + operational ledger, enabling strict workflow control (state transitions, idempotency, retries, auditability) without inventing authoritative balance values.
+      </p>
+      <p>
+        The design prioritizes correctness under failure and concurrency: all writes are serialized by SQLite <code>BEGIN IMMEDIATE</code>, HCM writes are mediated by an outbox worker, drift is corrected through real-time fetch + batch sync + reconciliation, and all critical transitions are append-only logged. This architecture deliberately trades horizontal scalability for deterministic behavior and testable resilience.
+      </p>
+
+      <h2 id="architecture">2) System Architecture</h2>
+      <pre><code>┌─────────────────────────────────────────────────────────────┐
+│                        CLIENT LAYER                         │
+│           (Employee App / Manager App / Admin)              │
+└───────────────────┬─────────────────────────────────────────┘
+                    │ REST / HTTPS
+┌───────────────────▼─────────────────────────────────────────┐
+│              TIME-OFF MICROSERVICE  (port 3000)             │
+│  API Layer | Service Layer | Domain Layer                   │
+│  Data Layer: balance | time_off_request | outbox | logs     │
+│  Workers: Outbox(500ms), Reconciliation(15m), BatchPull(60m)│
+└───────────────────┬─────────────────────────────────────────┘
+                    │ HTTP (Axios + Promise.race 8s timeout)
+┌───────────────────▼─────────────────────────────────────────┐
+│               MOCK HCM SERVICE  (port 4000)                 │
+│  /api/hcm/balance | /timeoff/deduct | /timeoff/reverse      │
+│  /api/hcm/batch/balances + /__control                       │
+└─────────────────────────────────────────────────────────────┘</code></pre>
+      <p>Core modules: <code>TimeOffModule</code>, <code>BalanceModule</code>, <code>HcmClientModule</code>, <code>OutboxModule</code>, <code>SyncModule</code>.</p>
+
+      <h2 id="rules">3) System Invariants / Rules (R1-R15)</h2>
+      <ol>
+        <li><strong>R1:</strong> HCM is sole balance authority.</li>
+        <li><strong>R2:</strong> No local approval without HCM-confirmed deduction.</li>
+        <li><strong>R3:</strong> Idempotency required on every mutating path.</li>
+        <li><strong>R4:</strong> SQLite serializes all writes globally; handle <code>SQLITE_BUSY</code> as 503.</li>
+        <li><strong>R5:</strong> Stale (>5m) balance cannot drive approval; re-fetch required.</li>
+        <li><strong>R6:</strong> Batch updates apply only if incoming HCM timestamp is strictly newer.</li>
+        <li><strong>R7:</strong> Strict state machine; invalid transitions throw exceptions.</li>
+        <li><strong>R8:</strong> HCM calls use 8s timeout with explicit 409/4xx/5xx handling.</li>
+        <li><strong>R9:</strong> All HCM writes must flow through outbox.</li>
+        <li><strong>R10:</strong> Audit logs are immutable append-only.</li>
+        <li><strong>R11:</strong> No silent failures; all workers must log start/success/failure structurally.</li>
+        <li><strong>R12:</strong> Request dimensions are immutable after creation.</li>
+        <li><strong>R13:</strong> Reconciliation compares <code>total_days</code> and adjusted <code>used_days</code>; auto-correct gated.</li>
+        <li><strong>R14:</strong> Coverage gates on service layer, state machine, outbox processor, and API endpoint tests.</li>
+        <li><strong>R15:</strong> Canonical retry/backoff: max 3 attempts, delays 2s/4s/8s.</li>
+      </ol>
+
+      <h2 id="data-model">4) Data Model</h2>
+      <p>All timestamps are UTC ISO-8601 text; IDs are UUIDv4; DB is SQLite via TypeORM.</p>
+      <h3>ReadyOn Tables</h3>
+      <table>
+        <thead><tr><th>Table</th><th>Purpose</th><th>Key Columns</th></tr></thead>
+        <tbody>
+          <tr><td><code>balance</code></td><td>Cached HCM balances</td><td><code>employee_id</code>, <code>location_id</code>, <code>leave_type</code>, <code>total_days</code>, <code>used_days</code>, <code>pending_days</code>, <code>hcm_last_updated_at</code>, <code>synced_at</code></td></tr>
+          <tr><td><code>time_off_request</code></td><td>Request lifecycle records</td><td><code>idempotency_key</code>, <code>state</code>, <code>hcm_external_ref</code>, <code>hcm_transaction_id</code>, <code>failure_reason</code></td></tr>
+          <tr><td><code>outbox</code></td><td>Async HCM intent queue</td><td><code>event_type</code>, <code>status</code>, <code>attempts</code>, <code>process_after</code>, <code>last_error</code></td></tr>
+          <tr><td><code>request_audit_log</code></td><td>State transition audit</td><td><code>from_state</code>, <code>to_state</code>, <code>actor</code>, <code>reason</code></td></tr>
+          <tr><td><code>balance_change_log</code></td><td>Balance mutation audit</td><td><code>field_changed</code>, <code>old_value</code>, <code>new_value</code>, <code>source</code>, <code>source_ref</code></td></tr>
+          <tr><td><code>reconciliation_log</code></td><td>Detected drift entries</td><td><code>drift_field</code>, <code>local_value</code>, <code>hcm_value</code>, <code>adjusted_local</code>, <code>resolved</code>, <code>resolution</code></td></tr>
+          <tr><td><code>sync_checkpoint</code></td><td>Batch progress marker</td><td><code>last_batch_id</code>, <code>last_batch_at</code>, <code>last_record_count</code></td></tr>
+          <tr><td><code>idempotency_record</code></td><td>Replay/in-progress protection</td><td><code>status</code>, <code>response_status</code>, <code>response_body</code>, <code>expires_at</code></td></tr>
+        </tbody>
+      </table>
+      <h3>Mock HCM Tables</h3>
+      <table>
+        <thead><tr><th>Table</th><th>Purpose</th><th>Key Columns</th></tr></thead>
+        <tbody>
+          <tr><td><code>hcm_balance</code></td><td>Authoritative HCM balances</td><td><code>total_days</code>, <code>used_days</code>, <code>last_updated_at</code></td></tr>
+          <tr><td><code>hcm_transaction</code></td><td>Deduct/reverse ledger</td><td><code>external_ref</code>, <code>transaction_type</code>, <code>status</code>, <code>reversed_by</code></td></tr>
+          <tr><td><code>hcm_chaos_config</code></td><td>Chaos behavior rules</td><td><code>config</code> JSON</td></tr>
+          <tr><td><code>hcm_call_log</code></td><td>Call trace for tests</td><td><code>endpoint</code>, <code>response_status</code>, <code>chaos_applied</code></td></tr>
+          <tr><td><code>hcm_internal_clock</code></td><td>Clock offset control</td><td><code>offset_ms</code></td></tr>
+          <tr><td><code>hcm_batch_snapshot</code></td><td>Frozen batch pages</td><td><code>batch_id</code>, <code>record_index</code>, <code>expires_at</code></td></tr>
+        </tbody>
+      </table>
+
+      <h2 id="api">5) API Contracts</h2>
+      <div class="card endpoint">
+        <h3>GET <code>/balances/:employeeId/:locationId/:leaveType</code></h3>
+        <p>Returns computed <code>availableDays = totalDays - usedDays - pendingDays</code>. TTL refresh after 5 minutes.</p>
+      </div>
+      <div class="card endpoint">
+        <h3>POST <code>/time-off/requests</code></h3>
+        <p>Creates request (202) with idempotency and async outbox deduction flow.</p>
+      </div>
+      <div class="card endpoint">
+        <h3>GET <code>/time-off/requests/:requestId</code> / GET <code>/time-off/requests</code></h3>
+        <p>Single request read and paginated list by employee.</p>
+      </div>
+      <div class="card endpoint">
+        <h3>POST <code>/time-off/requests/:requestId/cancel</code></h3>
+        <p><code>SUBMITTED → CANCELLED</code> directly, <code>APPROVED → CANCELLING</code> with outbox reverse.</p>
+      </div>
+      <div class="card endpoint">
+        <h3>POST <code>/sync/batch/balances</code> and GET <code>/sync/reconciliation/status</code></h3>
+        <p>Batch apply endpoint and latest reconciliation summary endpoint.</p>
+      </div>
+      <div class="card endpoint">
+        <h3>GET <code>/health</code></h3>
+        <p>Returns <code>status</code>, HCM reachability, outbox pending count, last batch and reconciliation timestamps.</p>
+      </div>
+
+      <h2 id="decisions">6) Challenges & Decisions</h2>
+      <details open><summary>C1-C3: Consistency, independent HCM updates, and write serialization</summary><div>
+        Cache-as-ledger design, push+pull+TTL sync, and SQLite global writer lock model were chosen for determinism.
+      </div></details>
+      <details><summary>C4-C6: Idempotency, ambiguous HCM outcomes, and stale batch protection</summary><div>
+        Claim-before-execute idempotency, 409-as-success semantics, and per-record R6 timestamp checks prevent duplicate side effects.
+      </div></details>
+      <details><summary>C7-C9: HCM downtime, state mismatch, and defensive validation</summary><div>
+        Fresh cache can proceed, stale cache blocks writes, outbox crash recovery resets stuck processing, local validation remains mandatory.
+      </div></details>
+      <details><summary>C10-C13: fractional leaves, backdated requests, cancellation reversal, first-use balance creation</summary><div>
+        0.5-day granularity, controlled retroactive behavior, explicit <code>CANCELLING</code> state, and safe first-row creation under lock.
+      </div></details>
+
+      <h2 id="sync">7) Sync Strategy</h2>
+      <table>
+        <thead><tr><th>Mode</th><th>Direction</th><th>Frequency</th><th>Core Safety</th></tr></thead>
+        <tbody>
+          <tr><td>Real-time fetch</td><td>HCM → Local</td><td>On-demand TTL</td><td>5-minute TTL + HCM authoritative timestamps</td></tr>
+          <tr><td>Batch push/pull</td><td>HCM → Local</td><td>Scheduled</td><td>R6 strict newer-only apply</td></tr>
+          <tr><td>Reconciliation</td><td>Read/compare + selective correct</td><td>15 min</td><td>Auto-correct only when stale &amp; HCM newer</td></tr>
+        </tbody>
+      </table>
+      <p>Checkpoint uses HCM <code>generatedAt</code>, never local <code>now()</code>, preventing clock-skew misses.</p>
+
+      <h2 id="concurrency">8) Concurrency & Idempotency</h2>
+      <ul>
+        <li>SQLite WAL + <code>BEGIN IMMEDIATE</code> serialize all writers, including different employees.</li>
+        <li><code>withBalanceLock</code> is the only legal balance mutation entry-point.</li>
+        <li>Idempotency: interceptor + DB uniqueness + HCM externalRef uniqueness.</li>
+        <li>Outbox claim/reset protects against duplicate and stuck processing records.</li>
+      </ul>
+      <pre><code class="language-ts">availableDays = totalDays - usedDays - pendingDays
+// Never stored in DB; computed in service layer.</code></pre>
+
+      <h2 id="failure">9) Failure Handling</h2>
+      <table>
+        <thead><tr><th>Failure</th><th>Action</th></tr></thead>
+        <tbody>
+          <tr><td>HCM timeout / 5xx / network error</td><td>Retry via outbox (max 3 attempts)</td></tr>
+          <tr><td>HCM 4xx (non-409)</td><td>Reject request, no retry</td></tr>
+          <tr><td>HCM 409 duplicate ref</td><td>Treat as success</td></tr>
+          <tr><td><code>SQLITE_BUSY</code></td><td>Map to HTTP 503</td></tr>
+          <tr><td>Outbox exhausted</td><td>Mark FAILED, restore pending, audit + structured error logs</td></tr>
+        </tbody>
+      </table>
+
+      <h2 id="tests">10) Test Strategy & Coverage</h2>
+      <p>Test domains: unit, integration, concurrency, idempotency, failure simulation, and batch conflict. Coverage gates are defined by R14 and Jest thresholds.</p>
+      <p>Coverage proof artifact: <a href="../COVERAGE.md">COVERAGE.md</a>.</p>
+      <ul>
+        <li>Service layer lines target: >= 80%</li>
+        <li><code>state-machine.ts</code> branch target: 100%</li>
+        <li><code>outbox.processor.ts</code> branch target: >= 90%</li>
+        <li>Every public endpoint must have at least one integration test</li>
+      </ul>
+
+      <h2 id="mock-hcm">11) Mock HCM Design</h2>
+      <p>Mock HCM is a full NestJS service, not a static stub, with independent SQLite state and control-plane APIs.</p>
+      <h3>Key behaviors</h3>
+      <ul>
+        <li>Deduct/reverse rules enforce externalRef idempotency and transactional effects.</li>
+        <li>Chaos controls: timeout, 500, 409, slow, silent_success, invalid_validation.</li>
+        <li>Batch endpoint supports snapshot + cursor pagination with expiring snapshots.</li>
+        <li>Control APIs enable deterministic tests: set balances, inject drift, advance HCM clock, inspect call logs, reset state.</li>
+      </ul>
+      <h3>Failure scenarios covered</h3>
+      <p>FS-1..FS-10 including silent success, network cuts, stale batch timestamps, reversal failures, and validation inconsistency modes.</p>
+    </main>
+  </div>
+
+  <script>
+    (function () {
+      const map = {
+        "const":"#f472b6","let":"#f472b6","var":"#f472b6","function":"#60a5fa","return":"#60a5fa",
+        "async":"#60a5fa","await":"#60a5fa","if":"#60a5fa","else":"#60a5fa","for":"#60a5fa",
+        "class":"#60a5fa","new":"#60a5fa","try":"#60a5fa","catch":"#60a5fa","throw":"#60a5fa"
+      };
+      document.querySelectorAll("pre code").forEach(function (el) {
+        let html = el.innerHTML
+          .replace(/(&quot;.*?&quot;|'.*?')/g, '<span style="color:#34d399">$1</span>')
+          .replace(/(\/\/.*)/g, '<span style="color:#9ca3af">$1</span>');
+        Object.keys(map).forEach(function (kw) {
+          const re = new RegExp("\\\\b" + kw + "\\\\b", "g");
+          html = html.replace(re, '<span style="color:' + map[kw] + '">' + kw + '</span>');
+        });
+        el.innerHTML = html;
+      });
+    })();
+  </script>
+</body>
+</html>
