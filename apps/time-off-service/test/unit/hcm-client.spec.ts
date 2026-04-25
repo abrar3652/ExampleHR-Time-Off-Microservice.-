@@ -22,9 +22,9 @@ describe('HcmClient.callHcm', () => {
 
     const promise = client.callHcm(
       () =>
-        new Promise((resolve) => {
+        (new Promise((resolve) => {
           setTimeout(() => resolve({ data: { ok: true }, status: 200 } as any), 9000);
-        }),
+        }) as any),
       'ctx',
     );
 
