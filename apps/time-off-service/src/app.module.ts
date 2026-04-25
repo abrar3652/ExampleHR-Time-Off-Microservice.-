@@ -15,7 +15,7 @@ import { TimeOffModule } from './modules/time-off/time-off.module';
     ConfigModule.forRoot({ isGlobal: true }),
     TypeOrmModule.forRoot({
       type: 'better-sqlite3',
-      database: process.env.DB_PATH ?? './data/time_off.sqlite',
+      database: process.env.DB_PATH ?? `./data/time_off_${process.env.JEST_WORKER_ID ?? 'dev'}.sqlite`,
       enableWAL: true,
       prepareDatabase: (db: { pragma: (sql: string) => unknown }) => {
         db.pragma('busy_timeout = 5000');

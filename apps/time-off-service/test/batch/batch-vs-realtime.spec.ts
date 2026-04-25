@@ -15,6 +15,7 @@ describe('batch-vs-realtime.spec', () => {
 
   beforeEach(async () => {
     process.env.DB_PATH = ':memory:';
+    process.env.DISABLE_BACKGROUND_WORKERS = '1';
     const mod = await Test.createTestingModule({ imports: [AppModule] }).compile();
     app = mod.createNestApplication();
     await app.init();
@@ -22,11 +23,17 @@ describe('batch-vs-realtime.spec', () => {
   });
 
   afterEach(async () => {
+    delete process.env.DISABLE_BACKGROUND_WORKERS;
     await app.close();
   });
 
   it('pending_days is recomputed and not overwritten by batch', async () => {
     const now = '2025-01-15T10:00:00Z';
+    await ds.getRepository(TimeOffRequest).delete({
+      employeeId: 'emp-001',
+      locationId: 'loc-nyc',
+      leaveType: LeaveType.ANNUAL,
+    });
     await ds.getRepository(Balance).delete({
       employeeId: 'emp-001',
       locationId: 'loc-nyc',

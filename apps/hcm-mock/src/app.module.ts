@@ -3,12 +3,19 @@ import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { DataSource, type DataSourceOptions } from 'typeorm';
 
+import { ControlController } from './controllers/control.controller';
+import { HcmBalanceController } from './controllers/hcm-balance.controller';
+import { HcmDeductController } from './controllers/hcm-deduct.controller';
+import { HcmReverseController } from './controllers/hcm-reverse.controller';
 import { HcmBalance } from './entities/hcm-balance.entity';
 import { HcmBatchSnapshot } from './entities/hcm-batch-snapshot.entity';
 import { HcmCallLog } from './entities/hcm-call-log.entity';
 import { HcmChaosConfig } from './entities/hcm-chaos-config.entity';
 import { HcmInternalClock } from './entities/hcm-internal-clock.entity';
 import { HcmTransaction } from './entities/hcm-transaction.entity';
+import { ChaosService } from './services/chaos.service';
+import { HcmCallLogService } from './services/hcm-call-log.service';
+import { HcmClockService } from './services/hcm-clock.service';
 
 async function ensureSingletonRows(dataSource: DataSource): Promise<void> {
   const chaosRepo = dataSource.getRepository(HcmChaosConfig);
@@ -78,6 +85,8 @@ async function seedBalancesForTestMode(dataSource: DataSource): Promise<void> {
       },
     }),
   ],
+  controllers: [HcmBalanceController, HcmDeductController, HcmReverseController, ControlController],
+  providers: [ChaosService, HcmClockService, HcmCallLogService],
 })
 export class AppModule {}
 

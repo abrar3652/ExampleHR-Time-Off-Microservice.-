@@ -26,6 +26,7 @@ export class BatchPullWorker {
 
   @Cron('0 * * * *')
   async run(): Promise<void> {
+    if (process.env.DISABLE_BACKGROUND_WORKERS === '1') return;
     const checkpoint = await this.dataSource.getRepository(SyncCheckpoint).findOneBy({ id: 'singleton' });
     const since = checkpoint?.lastBatchAt ?? undefined;
     let cursor: string | null = null;

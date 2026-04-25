@@ -22,6 +22,11 @@ export class BatchSyncService {
 
   constructor(private readonly dataSource: DataSource) {}
 
+  private toHcmMillis(value: string): number {
+    const normalized = /z$/i.test(value) ? value : `${value}Z`;
+    return Date.parse(normalized);
+  }
+
   async applyBatch(records: BatchRecord[], batchId: string, generatedAt: string): Promise<{ processed: number; skipped: number; failed: number }> {
     let processed = 0;
     let skipped = 0;
@@ -107,7 +112,15 @@ export class BatchSyncService {
         return 'applied';
       }
 
-      if (record.hcmLastUpdatedAt <= existing.hcmLastUpdatedAt) {
+      const incomingTs = this.toHcmMillis(record.hcmLastUpdatedAt);
+      const existingTs = this.toHcmMillis(existing.hcmLastUpdatedAt);
+      if (!Number.isNaN(incomingTs) && !Number.isNaN(existingTs) && incomingTs <= existingTs) {
+        return 'skipped';
+      }
+      if (
+        (Number.isNaN(incomingTs) || Number.isNaN(existingTs)) &&
+        record.hcmLastUpdatedAt <= existing.hcmLastUpdatedAt
+      ) {
         return 'skipped';
       }
 

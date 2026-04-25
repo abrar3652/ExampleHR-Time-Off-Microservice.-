@@ -15,6 +15,7 @@ export class OutboxWorker {
 
   @Interval(500)
   async poll(): Promise<void> {
+    if (process.env.DISABLE_BACKGROUND_WORKERS === '1') return;
     await this.outboxRepo.resetStuckProcessing();
     const claimed = await this.outboxRepo.claimPending(5);
     for (const record of claimed) {

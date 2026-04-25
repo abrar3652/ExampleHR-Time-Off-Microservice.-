@@ -11,12 +11,19 @@ const common_1 = require("@nestjs/common");
 const config_1 = require("@nestjs/config");
 const typeorm_1 = require("@nestjs/typeorm");
 const typeorm_2 = require("typeorm");
+const control_controller_1 = require("./controllers/control.controller");
+const hcm_balance_controller_1 = require("./controllers/hcm-balance.controller");
+const hcm_deduct_controller_1 = require("./controllers/hcm-deduct.controller");
+const hcm_reverse_controller_1 = require("./controllers/hcm-reverse.controller");
 const hcm_balance_entity_1 = require("./entities/hcm-balance.entity");
 const hcm_batch_snapshot_entity_1 = require("./entities/hcm-batch-snapshot.entity");
 const hcm_call_log_entity_1 = require("./entities/hcm-call-log.entity");
 const hcm_chaos_config_entity_1 = require("./entities/hcm-chaos-config.entity");
 const hcm_internal_clock_entity_1 = require("./entities/hcm-internal-clock.entity");
 const hcm_transaction_entity_1 = require("./entities/hcm-transaction.entity");
+const chaos_service_1 = require("./services/chaos.service");
+const hcm_call_log_service_1 = require("./services/hcm-call-log.service");
+const hcm_clock_service_1 = require("./services/hcm-clock.service");
 async function ensureSingletonRows(dataSource) {
     const chaosRepo = dataSource.getRepository(hcm_chaos_config_entity_1.HcmChaosConfig);
     const clockRepo = dataSource.getRepository(hcm_internal_clock_entity_1.HcmInternalClock);
@@ -83,6 +90,8 @@ exports.AppModule = AppModule = __decorate([
                 },
             }),
         ],
+        controllers: [hcm_balance_controller_1.HcmBalanceController, hcm_deduct_controller_1.HcmDeductController, hcm_reverse_controller_1.HcmReverseController, control_controller_1.ControlController],
+        providers: [chaos_service_1.ChaosService, hcm_clock_service_1.HcmClockService, hcm_call_log_service_1.HcmCallLogService],
     })
 ], AppModule);
 //# sourceMappingURL=app.module.js.map
