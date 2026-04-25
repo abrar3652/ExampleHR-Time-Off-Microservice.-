@@ -1,11 +1,9 @@
-import type { Config } from 'jest';
-
-const config: Config = {
+const config = {
   projects: [
     {
       displayName: 'unit',
       testEnvironment: 'node',
-      testMatch: ['<rootDir>/**/?(*.)spec.ts'],
+      testMatch: ['<rootDir>/**/*.spec.ts'],
       transform: {
         '^.+\\.(t|j)s$': ['ts-jest', { tsconfig: '<rootDir>/tsconfig.json' }],
       },
@@ -22,7 +20,7 @@ const config: Config = {
     {
       displayName: 'integration',
       testEnvironment: 'node',
-      testMatch: ['<rootDir>/**/?(*.)int-spec.ts'],
+      testMatch: ['<rootDir>/**/*.int-spec.ts'],
       transform: {
         '^.+\\.(t|j)s$': ['ts-jest', { tsconfig: '<rootDir>/tsconfig.json' }],
       },
