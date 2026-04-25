@@ -76,6 +76,11 @@ let OutboxRepository = class OutboxRepository {
     async markFailed(id, reason) {
         await this.dataSource.getRepository(outbox_entity_1.Outbox).update({ id }, { status: 'FAILED', lastError: reason });
     }
+    async countPendingOrProcessing() {
+        return this.dataSource.getRepository(outbox_entity_1.Outbox).count({
+            where: { status: (0, typeorm_2.In)(['PENDING', 'PROCESSING']) },
+        });
+    }
 };
 exports.OutboxRepository = OutboxRepository;
 exports.OutboxRepository = OutboxRepository = __decorate([

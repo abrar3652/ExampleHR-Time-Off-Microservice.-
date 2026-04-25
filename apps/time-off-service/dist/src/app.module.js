@@ -14,6 +14,7 @@ const typeorm_1 = require("@nestjs/typeorm");
 const global_exception_filter_1 = require("./filters/global-exception.filter");
 const health_controller_1 = require("./health.controller");
 const balance_module_1 = require("./modules/balance/balance.module");
+const hcm_client_module_1 = require("./modules/hcm-client/hcm-client.module");
 const idempotency_interceptor_1 = require("./modules/idempotency/idempotency.interceptor");
 const idempotency_module_1 = require("./modules/idempotency/idempotency.module");
 const sync_module_1 = require("./modules/sync/sync.module");
@@ -36,6 +37,7 @@ exports.AppModule = AppModule = __decorate([
                 synchronize: true,
             }),
             balance_module_1.BalanceModule,
+            hcm_client_module_1.HcmClientModule,
             idempotency_module_1.IdempotencyModule,
             sync_module_1.SyncModule,
             time_off_module_1.TimeOffModule,

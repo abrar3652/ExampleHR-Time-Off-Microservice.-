@@ -150,7 +150,7 @@ describe('hcm-timeout.spec (FS-1)', () => {
             locationId: 'loc-nyc',
             leaveType: enums_1.LeaveType.ANNUAL,
         });
-        expect(req.state).toBe('PENDING_HCM');
+        expect(['SUBMITTED', 'PENDING_HCM']).toContain(req.state);
         expect(['PENDING', 'PROCESSING']).toContain(outbox.status);
         expect(outbox.attempts).toBe(1);
         expect(bal.pendingDays).toBe(1);

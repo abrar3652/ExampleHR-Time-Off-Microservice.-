@@ -6,6 +6,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { GlobalExceptionFilter } from './filters/global-exception.filter';
 import { HealthController } from './health.controller';
 import { BalanceModule } from './modules/balance/balance.module';
+import { HcmClientModule } from './modules/hcm-client/hcm-client.module';
 import { IdempotencyInterceptor } from './modules/idempotency/idempotency.interceptor';
 import { IdempotencyModule } from './modules/idempotency/idempotency.module';
 import { SyncModule } from './modules/sync/sync.module';
@@ -25,6 +26,7 @@ import { TimeOffModule } from './modules/time-off/time-off.module';
       synchronize: true,
     }),
     BalanceModule,
+    HcmClientModule,
     IdempotencyModule,
     SyncModule,
     TimeOffModule,

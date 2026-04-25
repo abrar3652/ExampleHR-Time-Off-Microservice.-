@@ -27,29 +27,40 @@ let OutboxWorker = OutboxWorker_1 = class OutboxWorker {
         if (process.env.DISABLE_BACKGROUND_WORKERS === '1')
             return;
         await this.outboxRepo.resetStuckProcessing();
+        const pendingCount = await this.outboxRepo.countPendingOrProcessing();
         const claimed = await this.outboxRepo.claimPending(5);
+        let processedCount = 0;
+        let failedCount = 0;
         for (const record of claimed) {
             try {
                 await this.processor.process(record);
-                this.logger.log({
+                processedCount += 1;
+                this.logger.log(JSON.stringify({
                     outboxId: record.id,
                     requestId: record.requestId,
                     eventType: record.eventType,
                     attempt: record.attempts + 1,
                     result: 'OK',
-                });
+                }));
             }
             catch (err) {
-                this.logger.error({
+                failedCount += 1;
+                this.logger.error(JSON.stringify({
                     outboxId: record.id,
                     requestId: record.requestId,
                     eventType: record.eventType,
                     attempt: record.attempts + 1,
                     result: 'ERROR',
                     err: err?.message ?? String(err),
-                });
+                }));
             }
         }
+        this.logger.log(JSON.stringify({
+            event: 'outbox_tick',
+            pendingCount,
+            processedCount,
+            failedCount,
+        }));
     }
 };
 exports.OutboxWorker = OutboxWorker;

@@ -41,13 +41,19 @@ let BatchPullWorker = BatchPullWorker_1 = class BatchPullWorker {
                 params.since = since;
             const result = await this.hcmClient.callHcm(() => this.hcmClient.axios.get('/api/hcm/batch/balances', { params }), 'batch_pull');
             if (!result.success) {
-                this.logger.warn({ reason: 'batch pull failed', details: result.reason });
+                this.logger.warn(JSON.stringify({ event: 'batch_pull_failed', reason: result.reason }));
                 return;
             }
             const page = result.data;
             if ((page.records?.length ?? 0) === 0 && !cursor)
                 return;
-            await this.batchSyncService.applyBatch(page.records ?? [], page.batchId, page.generatedAt);
+            const applied = await this.batchSyncService.applyBatch(page.records ?? [], page.batchId, page.generatedAt);
+            this.logger.log(JSON.stringify({
+                event: 'batch_pull_page_processed',
+                batchId: page.batchId,
+                processed: applied.processed,
+                skipped: applied.skipped,
+            }));
             if (!page.hasMore)
                 break;
             cursor = page.nextCursor ?? null;

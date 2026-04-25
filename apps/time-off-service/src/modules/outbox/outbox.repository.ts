@@ -75,5 +75,11 @@ export class OutboxRepository {
   async markFailed(id: string, reason: string): Promise<void> {
     await this.dataSource.getRepository(Outbox).update({ id }, { status: 'FAILED', lastError: reason });
   }
+
+  async countPendingOrProcessing(): Promise<number> {
+    return this.dataSource.getRepository(Outbox).count({
+      where: { status: In(['PENDING', 'PROCESSING']) },
+    });
+  }
 }
 

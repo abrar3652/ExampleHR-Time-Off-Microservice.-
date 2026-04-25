@@ -8,4 +8,5 @@ export declare class OutboxRepository {
     markDone(id: string): Promise<void>;
     scheduleRetry(id: string, attempt: number, reason: string): Promise<void>;
     markFailed(id: string, reason: string): Promise<void>;
+    countPendingOrProcessing(): Promise<number>;
 }

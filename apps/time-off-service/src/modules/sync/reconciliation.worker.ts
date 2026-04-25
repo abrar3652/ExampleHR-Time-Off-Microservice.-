@@ -23,9 +23,11 @@ export class ReconciliationWorker {
   async run(): Promise<void> {
     if (process.env.DISABLE_BACKGROUND_WORKERS === '1') return;
     const runId = randomUUID();
-    this.logger.log({ runId, event: 'reconciliation_start' });
+    this.logger.log(JSON.stringify({ event: 'reconciliation_start', runId }));
 
     const balances = await this.dataSource.getRepository(Balance).find();
+    let drifts = 0;
+    let corrected = 0;
     for (const local of balances) {
       const hcmResult = await this.hcmClient.callHcm<HcmBalanceResponse>(
         () =>
@@ -35,12 +37,15 @@ export class ReconciliationWorker {
         `reconcile:${local.employeeId}:${local.locationId}:${local.leaveType}`,
       );
       if (!hcmResult.success) {
-        this.logger.warn({ runId, employee: local.employeeId, reason: 'hcm_fetch_failed' });
+        this.logger.warn(
+          JSON.stringify({ event: 'reconciliation_hcm_fetch_failed', runId, employee: local.employeeId, reason: 'hcm_fetch_failed' }),
+        );
         continue;
       }
 
       const totalDrift = hcmResult.data.totalDays - local.totalDays;
       if (Math.abs(totalDrift) <= 0.0001) continue;
+      drifts += 1;
 
       const now = new Date().toISOString();
       const driftEntry = this.dataSource.getRepository(ReconciliationLog).create({
@@ -96,9 +101,18 @@ export class ReconciliationWorker {
           { resolved: 1, resolution: 'AUTO_CORRECTED', resolvedAt: now },
         );
       });
+      corrected += 1;
     }
 
-    this.logger.log({ runId, event: 'reconciliation_complete', checked: balances.length });
+    this.logger.log(
+      JSON.stringify({
+        event: 'reconciliation_complete',
+        runId,
+        checked: balances.length,
+        drifts,
+        corrected,
+      }),
+    );
   }
 }
 
