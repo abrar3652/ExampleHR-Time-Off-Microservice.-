@@ -26,6 +26,10 @@ describe('sync-batch.e2e', () => {
         delete process.env.DISABLE_BACKGROUND_WORKERS;
         await app.close();
     });
+    afterAll(async () => {
+        if (app)
+            await app.close();
+    });
     it('older hcm_last_updated_at is skipped and checkpoint is updated', async () => {
         await ds.getRepository(sync_checkpoint_entity_1.SyncCheckpoint).delete({ id: 'singleton' });
         await ds.getRepository(balance_entity_1.Balance).delete({

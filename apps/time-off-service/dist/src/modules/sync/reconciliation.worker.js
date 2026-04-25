@@ -29,7 +29,10 @@ let ReconciliationWorker = ReconciliationWorker_1 = class ReconciliationWorker {
         this.hcmClient = hcmClient;
     }
     async run() {
-        if (process.env.DISABLE_BACKGROUND_WORKERS === '1')
+        await this.runReconciliation(false);
+    }
+    async runReconciliation(force = false) {
+        if (!force && process.env.DISABLE_BACKGROUND_WORKERS === '1')
             return;
         const runId = (0, node_crypto_1.randomUUID)();
         this.logger.log(JSON.stringify({ event: 'reconciliation_start', runId }));
@@ -43,55 +46,76 @@ let ReconciliationWorker = ReconciliationWorker_1 = class ReconciliationWorker {
                 continue;
             }
             const totalDrift = hcmResult.data.totalDays - local.totalDays;
-            if (Math.abs(totalDrift) <= 0.0001)
-                continue;
-            drifts += 1;
-            const now = new Date().toISOString();
-            const driftEntry = this.dataSource.getRepository(reconciliation_log_entity_1.ReconciliationLog).create({
-                id: (0, node_crypto_1.randomUUID)(),
-                runId,
-                employeeId: local.employeeId,
-                locationId: local.locationId,
-                leaveType: local.leaveType,
-                driftField: 'total_days',
-                localValue: local.totalDays,
-                hcmValue: hcmResult.data.totalDays,
-                adjustedLocal: local.totalDays,
-                drift: totalDrift,
-                resolved: 0,
-                resolution: 'MANUAL_REVIEW',
-                resolvedAt: null,
-                createdAt: now,
-            });
-            await this.dataSource.getRepository(reconciliation_log_entity_1.ReconciliationLog).save(driftEntry);
-            const driftAgeMinutes = (Date.now() - new Date(local.syncedAt).getTime()) / 60000;
-            const canAutoCorrect = driftAgeMinutes > 15 && hcmResult.data.lastUpdatedAt > local.hcmLastUpdatedAt;
-            if (!canAutoCorrect)
-                continue;
-            await this.dataSource.transaction(async (manager) => {
-                await manager.getRepository(balance_entity_1.Balance).update({ id: local.id }, {
-                    totalDays: hcmResult.data.totalDays,
-                    hcmLastUpdatedAt: hcmResult.data.lastUpdatedAt,
-                    updatedAt: now,
-                });
-                await manager.getRepository(balance_change_log_entity_1.BalanceChangeLog).insert({
+            if (Math.abs(totalDrift) > 0.001) {
+                drifts += 1;
+                const now = new Date().toISOString();
+                const driftEntry = this.dataSource.getRepository(reconciliation_log_entity_1.ReconciliationLog).create({
                     id: (0, node_crypto_1.randomUUID)(),
-                    balanceId: local.id,
+                    runId,
                     employeeId: local.employeeId,
                     locationId: local.locationId,
                     leaveType: local.leaveType,
-                    fieldChanged: 'total_days',
-                    oldValue: local.totalDays,
-                    newValue: hcmResult.data.totalDays,
-                    delta: hcmResult.data.totalDays - local.totalDays,
-                    source: enums_1.BalanceChangeSource.AUTO_RECONCILE,
-                    sourceRef: runId,
-                    hcmTimestamp: hcmResult.data.lastUpdatedAt,
+                    driftField: 'total_days',
+                    localValue: local.totalDays,
+                    hcmValue: hcmResult.data.totalDays,
+                    adjustedLocal: local.totalDays,
+                    drift: totalDrift,
+                    resolved: 0,
+                    resolution: 'MANUAL_REVIEW',
+                    resolvedAt: null,
                     createdAt: now,
                 });
-                await manager.getRepository(reconciliation_log_entity_1.ReconciliationLog).update({ id: driftEntry.id }, { resolved: 1, resolution: 'AUTO_CORRECTED', resolvedAt: now });
-            });
-            corrected += 1;
+                await this.dataSource.getRepository(reconciliation_log_entity_1.ReconciliationLog).save(driftEntry);
+                const driftAgeMinutes = (Date.now() - new Date(local.syncedAt).getTime()) / 60000;
+                const canAutoCorrect = driftAgeMinutes > 15 && hcmResult.data.lastUpdatedAt > local.hcmLastUpdatedAt;
+                if (canAutoCorrect) {
+                    await this.dataSource.transaction(async (manager) => {
+                        await manager.getRepository(balance_entity_1.Balance).update({ id: local.id }, {
+                            totalDays: hcmResult.data.totalDays,
+                            hcmLastUpdatedAt: hcmResult.data.lastUpdatedAt,
+                            updatedAt: now,
+                        });
+                        await manager.getRepository(balance_change_log_entity_1.BalanceChangeLog).insert({
+                            id: (0, node_crypto_1.randomUUID)(),
+                            balanceId: local.id,
+                            employeeId: local.employeeId,
+                            locationId: local.locationId,
+                            leaveType: local.leaveType,
+                            fieldChanged: 'total_days',
+                            oldValue: local.totalDays,
+                            newValue: hcmResult.data.totalDays,
+                            delta: hcmResult.data.totalDays - local.totalDays,
+                            source: enums_1.BalanceChangeSource.AUTO_RECONCILE,
+                            sourceRef: runId,
+                            hcmTimestamp: hcmResult.data.lastUpdatedAt,
+                            createdAt: now,
+                        });
+                        await manager.getRepository(reconciliation_log_entity_1.ReconciliationLog).update({ id: driftEntry.id }, { resolved: 1, resolution: 'AUTO_CORRECTED', resolvedAt: now });
+                    });
+                    corrected += 1;
+                }
+            }
+            const adjustedLocalUsed = local.usedDays + local.pendingDays;
+            const usedDrift = hcmResult.data.usedDays - adjustedLocalUsed;
+            if (Math.abs(usedDrift) > 0.001) {
+                drifts += 1;
+                await this.dataSource.getRepository(reconciliation_log_entity_1.ReconciliationLog).insert({
+                    id: (0, node_crypto_1.randomUUID)(),
+                    runId,
+                    employeeId: local.employeeId,
+                    locationId: local.locationId,
+                    leaveType: local.leaveType,
+                    driftField: 'used_days',
+                    localValue: local.usedDays,
+                    hcmValue: hcmResult.data.usedDays,
+                    adjustedLocal: adjustedLocalUsed,
+                    drift: usedDrift,
+                    resolved: 0,
+                    resolution: 'MANUAL_REVIEW',
+                    resolvedAt: null,
+                    createdAt: new Date().toISOString(),
+                });
+            }
         }
         this.logger.log(JSON.stringify({
             event: 'reconciliation_complete',

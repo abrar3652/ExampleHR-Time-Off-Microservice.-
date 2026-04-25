@@ -28,10 +28,13 @@ let HcmClient = class HcmClient {
         return this.http;
     }
     async callHcm(fn, context) {
+        let timeoutHandle = null;
         try {
             const response = await Promise.race([
                 fn(),
-                new Promise((_, reject) => setTimeout(() => reject(new Error('HCM_TIMEOUT')), 8000)),
+                new Promise((_, reject) => {
+                    timeoutHandle = setTimeout(() => reject(new Error('HCM_TIMEOUT')), 8000);
+                }),
             ]);
             return { success: true, data: response.data, statusCode: response.status };
         }
@@ -50,6 +53,10 @@ let HcmClient = class HcmClient {
             }
             void context;
             return { success: false, reason: 'NETWORK_ERROR' };
+        }
+        finally {
+            if (timeoutHandle)
+                clearTimeout(timeoutHandle);
         }
     }
 };

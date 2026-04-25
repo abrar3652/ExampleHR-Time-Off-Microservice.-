@@ -1,0 +1,24 @@
+[Nest] 44372  - 04/26/2026, 12:58:03 AM     LOG [NestFactory] Starting Nest application...
+[Nest] 44372  - 04/26/2026, 12:58:04 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized +33ms
+[Nest] 44372  - 04/26/2026, 12:58:04 AM     LOG [InstanceLoader] ConfigHostModule dependencies initialized +1ms
+[Nest] 44372  - 04/26/2026, 12:58:04 AM     LOG [InstanceLoader] DiscoveryModule dependencies initialized +1ms
+[Nest] 44372  - 04/26/2026, 12:58:04 AM     LOG [InstanceLoader] ConfigModule dependencies initialized +2ms
+[Nest] 44372  - 04/26/2026, 12:58:04 AM     LOG [InstanceLoader] ScheduleModule dependencies initialized +1ms
+[Nest] 44372  - 04/26/2026, 12:58:04 AM     LOG [InstanceLoader] TypeOrmCoreModule dependencies initialized +68ms
+[Nest] 44372  - 04/26/2026, 12:58:04 AM     LOG [InstanceLoader] AppModule dependencies initialized +2ms
+[Nest] 44372  - 04/26/2026, 12:58:04 AM     LOG [RoutesResolver] HcmBalanceController {/api/hcm/balance}: +4ms
+[Nest] 44372  - 04/26/2026, 12:58:04 AM     LOG [RouterExplorer] Mapped {/api/hcm/balance/:employeeId/:locationId/:leaveType, GET} route +5ms
+[Nest] 44372  - 04/26/2026, 12:58:04 AM     LOG [RoutesResolver] HcmBatchController {/api/hcm/batch}: +0ms
+[Nest] 44372  - 04/26/2026, 12:58:04 AM     LOG [RouterExplorer] Mapped {/api/hcm/batch/balances, GET} route +1ms
+[Nest] 44372  - 04/26/2026, 12:58:04 AM     LOG [RoutesResolver] HcmDeductController {/api/hcm/timeoff}: +1ms
+[Nest] 44372  - 04/26/2026, 12:58:04 AM     LOG [RouterExplorer] Mapped {/api/hcm/timeoff/deduct, POST} route +2ms
+[Nest] 44372  - 04/26/2026, 12:58:04 AM     LOG [RoutesResolver] HcmReverseController {/api/hcm/timeoff}: +0ms
+[Nest] 44372  - 04/26/2026, 12:58:04 AM     LOG [RouterExplorer] Mapped {/api/hcm/timeoff/reverse, POST} route +1ms
+[Nest] 44372  - 04/26/2026, 12:58:04 AM     LOG [RoutesResolver] ControlController {/__control}: +0ms
+[Nest] 44372  - 04/26/2026, 12:58:04 AM     LOG [RouterExplorer] Mapped {/__control/behavior, POST} route +1ms
+[Nest] 44372  - 04/26/2026, 12:58:04 AM     LOG [RouterExplorer] Mapped {/__control/balance, POST} route +0ms
+[Nest] 44372  - 04/26/2026, 12:58:04 AM     LOG [RouterExplorer] Mapped {/__control/drift, POST} route +1ms
+[Nest] 44372  - 04/26/2026, 12:58:04 AM     LOG [RouterExplorer] Mapped {/__control/advance-clock, POST} route +0ms
+[Nest] 44372  - 04/26/2026, 12:58:04 AM     LOG [RouterExplorer] Mapped {/__control/call-log, GET} route +1ms
+[Nest] 44372  - 04/26/2026, 12:58:04 AM     LOG [RouterExplorer] Mapped {/__control/reset, POST} route +1ms
+[Nest] 44372  - 04/26/2026, 12:58:04 AM     LOG [NestApplication] Nest application successfully started +7ms

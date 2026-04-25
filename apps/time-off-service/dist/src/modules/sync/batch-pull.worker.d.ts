@@ -8,4 +8,5 @@ export declare class BatchPullWorker {
     private readonly logger;
     constructor(dataSource: DataSource, hcmClient: HcmClient, batchSyncService: BatchSyncService);
     run(): Promise<void>;
+    runBatchPull(force?: boolean): Promise<void>;
 }

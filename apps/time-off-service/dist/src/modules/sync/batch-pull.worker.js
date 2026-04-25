@@ -28,7 +28,10 @@ let BatchPullWorker = BatchPullWorker_1 = class BatchPullWorker {
         this.batchSyncService = batchSyncService;
     }
     async run() {
-        if (process.env.DISABLE_BACKGROUND_WORKERS === '1')
+        await this.runBatchPull(false);
+    }
+    async runBatchPull(force = false) {
+        if (!force && process.env.DISABLE_BACKGROUND_WORKERS === '1')
             return;
         const checkpoint = await this.dataSource.getRepository(sync_checkpoint_entity_1.SyncCheckpoint).findOneBy({ id: 'singleton' });
         const since = checkpoint?.lastBatchAt ?? undefined;

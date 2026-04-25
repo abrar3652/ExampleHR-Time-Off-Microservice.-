@@ -47,6 +47,10 @@ describe('POST /time-off/requests (creation cases)', () => {
     await app.close();
   });
 
+  afterAll(async () => {
+    if (app) await app.close();
+  });
+
   it('creates request + outbox + pending increment + audit, and replays idempotent duplicate', async () => {
     const idempotencyKey = randomUUID();
     const body = {

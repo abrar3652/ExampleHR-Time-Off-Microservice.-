@@ -49,10 +49,13 @@ function makeHcmClient(baseURL: string): HcmClient {
   return {
     axios: http,
     callHcm: async (fn: any) => {
+      let timeoutHandle: NodeJS.Timeout | null = null;
       try {
         const response = await Promise.race([
           fn(),
-          new Promise<never>((_, reject) => setTimeout(() => reject(new Error('HCM_TIMEOUT')), 8000)),
+          new Promise<never>((_, reject) => {
+            timeoutHandle = setTimeout(() => reject(new Error('HCM_TIMEOUT')), 8000);
+          }),
         ]);
         return { success: true, data: response.data, statusCode: response.status };
       } catch (err: any) {
@@ -62,6 +65,8 @@ function makeHcmClient(baseURL: string): HcmClient {
           return { success: false, reason: status >= 500 ? 'SERVER_ERROR' : 'CLIENT_ERROR', statusCode: status, body: data };
         }
         return { success: false, reason: 'NETWORK_ERROR' };
+      } finally {
+        if (timeoutHandle) clearTimeout(timeoutHandle);
       }
     },
   } as unknown as HcmClient;

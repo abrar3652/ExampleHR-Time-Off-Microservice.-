@@ -82,6 +82,10 @@ describe('cancellation.e2e', () => {
     await app.close();
   });
 
+  afterAll(async () => {
+    if (app) await app.close();
+  });
+
   it('Cancel SUBMITTED request -> CANCELLED and pending restored', async () => {
     const reqId = randomUUID();
     const now = new Date().toISOString();

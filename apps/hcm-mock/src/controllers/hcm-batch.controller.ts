@@ -1,10 +1,14 @@
-import { BadRequestException, Controller, Get, Query } from '@nestjs/common';
+import { BadRequestException, Controller, Get, HttpException, Query } from '@nestjs/common';
 
 import { HcmBatchService, type HcmBatchRecord } from '../services/hcm-batch.service';
+import { ChaosService } from '../services/chaos.service';
 
 @Controller('/api/hcm/batch')
 export class HcmBatchController {
-  constructor(private readonly batchService: HcmBatchService) {}
+  constructor(
+    private readonly batchService: HcmBatchService,
+    private readonly chaos: ChaosService,
+  ) {}
 
   @Get('/balances')
   async getBalances(
@@ -19,6 +23,13 @@ export class HcmBatchController {
     nextCursor: string | null;
     totalCount: number;
   }> {
+    const chaosRule = await this.chaos.shouldApplyChaos('batch_get');
+    await this.chaos.applyDelay(chaosRule);
+    const injected = await this.chaos.injectBehavior(chaosRule, { endpoint: 'batch_get' });
+    if (injected) {
+      throw new HttpException(injected.body, injected.status);
+    }
+
     const parsedLimit = Number(limitRaw ?? 100);
     const limit = Number.isFinite(parsedLimit) ? Math.max(1, Math.min(500, parsedLimit)) : 100;
 

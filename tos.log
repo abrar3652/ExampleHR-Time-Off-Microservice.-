@@ -1,0 +1,53 @@
+[Nest] 10228  - 04/26/2026, 12:58:03 AM     LOG [NestFactory] Starting Nest application...
+[Nest] 10228  - 04/26/2026, 12:58:03 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized +47ms
+[Nest] 10228  - 04/26/2026, 12:58:03 AM     LOG [InstanceLoader] ConfigHostModule dependencies initialized +1ms
+[Nest] 10228  - 04/26/2026, 12:58:03 AM     LOG [InstanceLoader] DiscoveryModule dependencies initialized +1ms
+[Nest] 10228  - 04/26/2026, 12:58:03 AM     LOG [InstanceLoader] ConfigModule dependencies initialized +3ms
+[Nest] 10228  - 04/26/2026, 12:58:03 AM     LOG [InstanceLoader] ConfigModule dependencies initialized +1ms
+[Nest] 10228  - 04/26/2026, 12:58:03 AM     LOG [InstanceLoader] ScheduleModule dependencies initialized +1ms
+[Nest] 10228  - 04/26/2026, 12:58:03 AM     LOG [InstanceLoader] HcmClientModule dependencies initialized +1ms
+[Nest] 10228  - 04/26/2026, 12:58:03 AM     LOG [InstanceLoader] TypeOrmCoreModule dependencies initialized +34ms
+[Nest] 10228  - 04/26/2026, 12:58:03 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized +1ms
+[Nest] 10228  - 04/26/2026, 12:58:03 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized +0ms
+[Nest] 10228  - 04/26/2026, 12:58:03 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized +0ms
+[Nest] 10228  - 04/26/2026, 12:58:03 AM     LOG [InstanceLoader] TypeOrmModule dependencies initialized +1ms
+[Nest] 10228  - 04/26/2026, 12:58:03 AM     LOG [InstanceLoader] IdempotencyModule dependencies initialized +0ms
+[Nest] 10228  - 04/26/2026, 12:58:03 AM     LOG [InstanceLoader] OutboxModule dependencies initialized +1ms
+[Nest] 10228  - 04/26/2026, 12:58:03 AM     LOG [InstanceLoader] BalanceModule dependencies initialized +0ms
+[Nest] 10228  - 04/26/2026, 12:58:03 AM     LOG [InstanceLoader] SyncModule dependencies initialized +1ms
+[Nest] 10228  - 04/26/2026, 12:58:03 AM     LOG [InstanceLoader] AppModule dependencies initialized +0ms
+[Nest] 10228  - 04/26/2026, 12:58:03 AM     LOG [InstanceLoader] TimeOffModule dependencies initialized +0ms
+[Nest] 10228  - 04/26/2026, 12:58:03 AM     LOG [RoutesResolver] HealthController {/health}: +5ms
+[Nest] 10228  - 04/26/2026, 12:58:04 AM     LOG [RouterExplorer] Mapped {/health, GET} route +5ms
+[Nest] 10228  - 04/26/2026, 12:58:04 AM     LOG [RoutesResolver] BalanceController {/}: +0ms
+[Nest] 10228  - 04/26/2026, 12:58:04 AM     LOG [RouterExplorer] Mapped {/balances/:employeeId/:locationId/:leaveType, GET} route +1ms
+[Nest] 10228  - 04/26/2026, 12:58:04 AM     LOG [RoutesResolver] BatchSyncController {/sync}: +1ms
+[Nest] 10228  - 04/26/2026, 12:58:04 AM     LOG [RouterExplorer] Mapped {/sync/batch/balances, POST} route +1ms
+[Nest] 10228  - 04/26/2026, 12:58:04 AM     LOG [RouterExplorer] Mapped {/sync/reconciliation/status, GET} route +0ms
+[Nest] 10228  - 04/26/2026, 12:58:04 AM     LOG [RoutesResolver] TimeOffController {/time-off}: +0ms
+[Nest] 10228  - 04/26/2026, 12:58:04 AM     LOG [RouterExplorer] Mapped {/time-off/requests, POST} route +1ms
+[Nest] 10228  - 04/26/2026, 12:58:04 AM     LOG [RouterExplorer] Mapped {/time-off/requests/:requestId, GET} route +1ms
+[Nest] 10228  - 04/26/2026, 12:58:04 AM     LOG [RouterExplorer] Mapped {/time-off/requests/:requestId/cancel, POST} route +0ms
+[Nest] 10228  - 04/26/2026, 12:58:04 AM     LOG [NestApplication] Nest application successfully started +26ms
+[Nest] 10228  - 04/26/2026, 12:58:04 AM     LOG [OutboxWorker] {"event":"outbox_tick","pendingCount":0,"processedCount":0,"failedCount":0}
+[Nest] 10228  - 04/26/2026, 12:58:05 AM     LOG [OutboxWorker] {"event":"outbox_tick","pendingCount":0,"processedCount":0,"failedCount":0}
+[Nest] 10228  - 04/26/2026, 12:58:05 AM     LOG [OutboxWorker] {"event":"outbox_tick","pendingCount":0,"processedCount":0,"failedCount":0}
+[Nest] 10228  - 04/26/2026, 12:58:06 AM     LOG [OutboxWorker] {"event":"outbox_tick","pendingCount":0,"processedCount":0,"failedCount":0}
+[Nest] 10228  - 04/26/2026, 12:58:06 AM     LOG [OutboxWorker] {"event":"outbox_tick","pendingCount":0,"processedCount":0,"failedCount":0}
+[Nest] 10228  - 04/26/2026, 12:58:07 AM     LOG [OutboxWorker] {"event":"outbox_tick","pendingCount":0,"processedCount":0,"failedCount":0}
+[Nest] 10228  - 04/26/2026, 12:58:07 AM     LOG [OutboxWorker] {"event":"outbox_tick","pendingCount":0,"processedCount":0,"failedCount":0}
+[Nest] 10228  - 04/26/2026, 12:58:08 AM     LOG [OutboxWorker] {"event":"outbox_tick","pendingCount":0,"processedCount":0,"failedCount":0}
+[Nest] 10228  - 04/26/2026, 12:58:08 AM     LOG [OutboxWorker] {"event":"outbox_tick","pendingCount":0,"processedCount":0,"failedCount":0}
+[Nest] 10228  - 04/26/2026, 12:58:09 AM     LOG [OutboxWorker] {"event":"outbox_tick","pendingCount":0,"processedCount":0,"failedCount":0}
+[Nest] 10228  - 04/26/2026, 12:58:09 AM     LOG [OutboxWorker] {"event":"outbox_tick","pendingCount":0,"processedCount":0,"failedCount":0}
+[Nest] 10228  - 04/26/2026, 12:58:10 AM     LOG [OutboxWorker] {"event":"outbox_tick","pendingCount":0,"processedCount":0,"failedCount":0}
+[Nest] 10228  - 04/26/2026, 12:58:10 AM     LOG [OutboxWorker] {"event":"outbox_tick","pendingCount":0,"processedCount":0,"failedCount":0}
+[Nest] 10228  - 04/26/2026, 12:58:11 AM     LOG [OutboxWorker] {"event":"outbox_tick","pendingCount":0,"processedCount":0,"failedCount":0}
+[Nest] 10228  - 04/26/2026, 12:58:11 AM     LOG [OutboxWorker] {"event":"outbox_tick","pendingCount":0,"processedCount":0,"failedCount":0}
+[Nest] 10228  - 04/26/2026, 12:58:12 AM     LOG [OutboxWorker] {"event":"outbox_tick","pendingCount":0,"processedCount":0,"failedCount":0}
+[Nest] 10228  - 04/26/2026, 12:58:12 AM     LOG [OutboxWorker] {"event":"outbox_tick","pendingCount":0,"processedCount":0,"failedCount":0}
+[Nest] 10228  - 04/26/2026, 12:58:13 AM     LOG [OutboxWorker] {"event":"outbox_tick","pendingCount":0,"processedCount":0,"failedCount":0}
+[Nest] 10228  - 04/26/2026, 12:58:13 AM     LOG [OutboxWorker] {"event":"outbox_tick","pendingCount":0,"processedCount":0,"failedCount":0}
+[Nest] 10228  - 04/26/2026, 12:58:14 AM     LOG [OutboxWorker] {"event":"outbox_tick","pendingCount":0,"processedCount":0,"failedCount":0}
+[Nest] 10228  - 04/26/2026, 12:58:14 AM     LOG [OutboxWorker] {"event":"outbox_tick","pendingCount":0,"processedCount":0,"failedCount":0}
+[Nest] 10228  - 04/26/2026, 12:58:15 AM     LOG [OutboxWorker] {"event":"outbox_tick","pendingCount":0,"processedCount":0,"failedCount":0}

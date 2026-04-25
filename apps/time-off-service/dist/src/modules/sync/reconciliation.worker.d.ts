@@ -6,4 +6,5 @@ export declare class ReconciliationWorker {
     private readonly logger;
     constructor(dataSource: DataSource, hcmClient: HcmClient);
     run(): Promise<void>;
+    runReconciliation(force?: boolean): Promise<void>;
 }

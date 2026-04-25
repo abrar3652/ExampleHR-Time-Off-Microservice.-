@@ -15,12 +15,21 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.HcmBatchController = void 0;
 const common_1 = require("@nestjs/common");
 const hcm_batch_service_1 = require("../services/hcm-batch.service");
+const chaos_service_1 = require("../services/chaos.service");
 let HcmBatchController = class HcmBatchController {
     batchService;
-    constructor(batchService) {
+    chaos;
+    constructor(batchService, chaos) {
         this.batchService = batchService;
+        this.chaos = chaos;
     }
     async getBalances(since, cursor, limitRaw) {
+        const chaosRule = await this.chaos.shouldApplyChaos('batch_get');
+        await this.chaos.applyDelay(chaosRule);
+        const injected = await this.chaos.injectBehavior(chaosRule, { endpoint: 'batch_get' });
+        if (injected) {
+            throw new common_1.HttpException(injected.body, injected.status);
+        }
         const parsedLimit = Number(limitRaw ?? 100);
         const limit = Number.isFinite(parsedLimit) ? Math.max(1, Math.min(500, parsedLimit)) : 100;
         if (!cursor) {
@@ -68,6 +77,7 @@ __decorate([
 ], HcmBatchController.prototype, "getBalances", null);
 exports.HcmBatchController = HcmBatchController = __decorate([
     (0, common_1.Controller)('/api/hcm/batch'),
-    __metadata("design:paramtypes", [hcm_batch_service_1.HcmBatchService])
+    __metadata("design:paramtypes", [hcm_batch_service_1.HcmBatchService,
+        chaos_service_1.ChaosService])
 ], HcmBatchController);
 //# sourceMappingURL=hcm-batch.controller.js.map
