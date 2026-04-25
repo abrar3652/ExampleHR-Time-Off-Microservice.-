@@ -3,12 +3,21 @@ import { DataSource } from 'typeorm';
 
 import { HcmChaosConfig } from '../entities/hcm-chaos-config.entity';
 
-export type ChaosBehavior = 'timeout' | '500' | '409' | 'slow' | 'silent_success' | 'invalid_validation' | 'enable';
+export type ChaosBehavior =
+  | 'timeout'
+  | '500'
+  | '409'
+  | 'slow'
+  | 'silent_success'
+  | 'invalid_validation'
+  | 'enable'
+  | 'stale_timestamps';
 
 export interface ChaosRule {
   behavior: ChaosBehavior;
   remaining_count: number;
   delay_ms?: number;
+  interval_seconds?: number;
 }
 
 export type ChaosConfigMap = Record<string, ChaosRule>;

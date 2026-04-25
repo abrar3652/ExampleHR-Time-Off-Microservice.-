@@ -12,6 +12,7 @@ interface BehaviorBody {
   behavior: ChaosBehavior;
   count: number;
   delayMs?: number;
+  intervalSeconds?: number;
 }
 
 interface BalanceBody {
@@ -45,11 +46,20 @@ export class ControlController {
 
   @Post('/behavior')
   async setBehavior(@Body() body: BehaviorBody): Promise<{ ok: true; config: unknown }> {
-    await this.chaos.setRule(body.endpoint, {
+    const rule: {
+      behavior: ChaosBehavior;
+      remaining_count: number;
+      delay_ms: number;
+      interval_seconds?: number;
+    } = {
       behavior: body.behavior,
       remaining_count: body.count,
       delay_ms: body.delayMs ?? 0,
-    });
+    };
+    if (typeof body.intervalSeconds === 'number') {
+      rule.interval_seconds = body.intervalSeconds;
+    }
+    await this.chaos.setRule(body.endpoint, rule);
     return { ok: true, config: await this.chaos.loadConfig() };
   }
 
@@ -115,6 +125,12 @@ export class ControlController {
   @Post('/advance-clock')
   async advanceClock(@Body() body: AdvanceClockBody): Promise<{ ok: true; offsetMs: number }> {
     const offsetMs = await this.clock.advance(body.milliseconds);
+    const balanceRepo = this.dataSource.getRepository(HcmBalance);
+    const balances = await balanceRepo.find();
+    for (const balance of balances) {
+      const shifted = new Date(Date.parse(balance.lastUpdatedAt) + body.milliseconds).toISOString();
+      await balanceRepo.update({ id: balance.id }, { lastUpdatedAt: shifted });
+    }
     return { ok: true, offsetMs };
   }
 

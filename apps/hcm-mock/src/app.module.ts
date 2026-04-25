@@ -1,10 +1,12 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { ScheduleModule } from '@nestjs/schedule';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { DataSource, type DataSourceOptions } from 'typeorm';
 
 import { ControlController } from './controllers/control.controller';
 import { HcmBalanceController } from './controllers/hcm-balance.controller';
+import { HcmBatchController } from './controllers/hcm-batch.controller';
 import { HcmDeductController } from './controllers/hcm-deduct.controller';
 import { HcmReverseController } from './controllers/hcm-reverse.controller';
 import { HcmBalance } from './entities/hcm-balance.entity';
@@ -13,7 +15,10 @@ import { HcmCallLog } from './entities/hcm-call-log.entity';
 import { HcmChaosConfig } from './entities/hcm-chaos-config.entity';
 import { HcmInternalClock } from './entities/hcm-internal-clock.entity';
 import { HcmTransaction } from './entities/hcm-transaction.entity';
+import { HcmDriftJob } from './jobs/hcm-drift.job';
+import { HcmPushJob } from './jobs/hcm-push.job';
 import { ChaosService } from './services/chaos.service';
+import { HcmBatchService } from './services/hcm-batch.service';
 import { HcmCallLogService } from './services/hcm-call-log.service';
 import { HcmClockService } from './services/hcm-clock.service';
 
@@ -64,6 +69,7 @@ async function seedBalancesForTestMode(dataSource: DataSource): Promise<void> {
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    ScheduleModule.forRoot(),
     TypeOrmModule.forRootAsync({
       useFactory: async (): Promise<DataSourceOptions> => ({
         type: 'better-sqlite3',
@@ -85,8 +91,8 @@ async function seedBalancesForTestMode(dataSource: DataSource): Promise<void> {
       },
     }),
   ],
-  controllers: [HcmBalanceController, HcmDeductController, HcmReverseController, ControlController],
-  providers: [ChaosService, HcmClockService, HcmCallLogService],
+  controllers: [HcmBalanceController, HcmBatchController, HcmDeductController, HcmReverseController, ControlController],
+  providers: [ChaosService, HcmClockService, HcmCallLogService, HcmBatchService, HcmPushJob, HcmDriftJob],
 })
 export class AppModule {}
 

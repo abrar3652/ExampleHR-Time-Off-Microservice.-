@@ -6,6 +6,7 @@ interface BehaviorBody {
     behavior: ChaosBehavior;
     count: number;
     delayMs?: number;
+    intervalSeconds?: number;
 }
 interface BalanceBody {
     employeeId: string;

@@ -30,11 +30,15 @@ let ControlController = class ControlController {
         this.clock = clock;
     }
     async setBehavior(body) {
-        await this.chaos.setRule(body.endpoint, {
+        const rule = {
             behavior: body.behavior,
             remaining_count: body.count,
             delay_ms: body.delayMs ?? 0,
-        });
+        };
+        if (typeof body.intervalSeconds === 'number') {
+            rule.interval_seconds = body.intervalSeconds;
+        }
+        await this.chaos.setRule(body.endpoint, rule);
         return { ok: true, config: await this.chaos.loadConfig() };
     }
     async setBalance(body) {
@@ -90,6 +94,12 @@ let ControlController = class ControlController {
     }
     async advanceClock(body) {
         const offsetMs = await this.clock.advance(body.milliseconds);
+        const balanceRepo = this.dataSource.getRepository(hcm_balance_entity_1.HcmBalance);
+        const balances = await balanceRepo.find();
+        for (const balance of balances) {
+            const shifted = new Date(Date.parse(balance.lastUpdatedAt) + body.milliseconds).toISOString();
+            await balanceRepo.update({ id: balance.id }, { lastUpdatedAt: shifted });
+        }
         return { ok: true, offsetMs };
     }
     async getCallLog() {

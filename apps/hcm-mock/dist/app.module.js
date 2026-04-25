@@ -9,10 +9,12 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.AppModule = void 0;
 const common_1 = require("@nestjs/common");
 const config_1 = require("@nestjs/config");
+const schedule_1 = require("@nestjs/schedule");
 const typeorm_1 = require("@nestjs/typeorm");
 const typeorm_2 = require("typeorm");
 const control_controller_1 = require("./controllers/control.controller");
 const hcm_balance_controller_1 = require("./controllers/hcm-balance.controller");
+const hcm_batch_controller_1 = require("./controllers/hcm-batch.controller");
 const hcm_deduct_controller_1 = require("./controllers/hcm-deduct.controller");
 const hcm_reverse_controller_1 = require("./controllers/hcm-reverse.controller");
 const hcm_balance_entity_1 = require("./entities/hcm-balance.entity");
@@ -21,7 +23,10 @@ const hcm_call_log_entity_1 = require("./entities/hcm-call-log.entity");
 const hcm_chaos_config_entity_1 = require("./entities/hcm-chaos-config.entity");
 const hcm_internal_clock_entity_1 = require("./entities/hcm-internal-clock.entity");
 const hcm_transaction_entity_1 = require("./entities/hcm-transaction.entity");
+const hcm_drift_job_1 = require("./jobs/hcm-drift.job");
+const hcm_push_job_1 = require("./jobs/hcm-push.job");
 const chaos_service_1 = require("./services/chaos.service");
+const hcm_batch_service_1 = require("./services/hcm-batch.service");
 const hcm_call_log_service_1 = require("./services/hcm-call-log.service");
 const hcm_clock_service_1 = require("./services/hcm-clock.service");
 async function ensureSingletonRows(dataSource) {
@@ -68,6 +73,7 @@ exports.AppModule = AppModule = __decorate([
     (0, common_1.Module)({
         imports: [
             config_1.ConfigModule.forRoot({ isGlobal: true }),
+            schedule_1.ScheduleModule.forRoot(),
             typeorm_1.TypeOrmModule.forRootAsync({
                 useFactory: async () => ({
                     type: 'better-sqlite3',
@@ -90,8 +96,8 @@ exports.AppModule = AppModule = __decorate([
                 },
             }),
         ],
-        controllers: [hcm_balance_controller_1.HcmBalanceController, hcm_deduct_controller_1.HcmDeductController, hcm_reverse_controller_1.HcmReverseController, control_controller_1.ControlController],
-        providers: [chaos_service_1.ChaosService, hcm_clock_service_1.HcmClockService, hcm_call_log_service_1.HcmCallLogService],
+        controllers: [hcm_balance_controller_1.HcmBalanceController, hcm_batch_controller_1.HcmBatchController, hcm_deduct_controller_1.HcmDeductController, hcm_reverse_controller_1.HcmReverseController, control_controller_1.ControlController],
+        providers: [chaos_service_1.ChaosService, hcm_clock_service_1.HcmClockService, hcm_call_log_service_1.HcmCallLogService, hcm_batch_service_1.HcmBatchService, hcm_push_job_1.HcmPushJob, hcm_drift_job_1.HcmDriftJob],
     })
 ], AppModule);
 //# sourceMappingURL=app.module.js.map
