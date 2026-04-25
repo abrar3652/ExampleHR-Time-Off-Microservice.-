@@ -8,4 +8,23 @@ export declare class TimeOffController {
         message: string;
         estimatedResolutionSeconds: number;
     }>;
+    getRequestById(requestId: string): Promise<{
+        requestId: string;
+        employeeId: string;
+        locationId: string;
+        leaveType: import("../../domain/enums").LeaveType;
+        startDate: string;
+        endDate: string;
+        daysRequested: number;
+        state: import("../../domain/enums").RequestState;
+        hcmExternalRef: string | null;
+        rejectionReason: string | null;
+        createdAt: string;
+        updatedAt: string;
+    }>;
+    cancel(requestId: string, employeeId: string): Promise<{
+        requestId: string;
+        state: import("../../domain/enums").RequestState;
+        message: string;
+    }>;
 }

@@ -1,12 +1,18 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
-import { EntityManager } from 'typeorm';
+import { DataSource, EntityManager } from 'typeorm';
 
-import { LeaveType, OutboxEventType, RequestState } from '../../domain/enums';
-import { InsufficientBalanceException } from '../../domain/exceptions';
+import { BalanceChangeSource, LeaveType, OutboxEventType, RequestState } from '../../domain/enums';
+import {
+  InsufficientBalanceException,
+  InvalidStateTransitionException,
+  RequestNotFoundError,
+} from '../../domain/exceptions';
+import { RequestStateMachine } from '../../domain/state-machine';
 import { BalanceRepository } from '../balance/balance.repository';
 import { BalanceService } from '../balance/balance.service';
 import { Balance } from '../balance/entities/balance.entity';
+import { BalanceChangeLog } from '../balance/entities/balance-change-log.entity';
 import { Outbox } from './entities/outbox.entity';
 import { RequestAuditLog } from './entities/request-audit-log.entity';
 import { TimeOffRequest } from './entities/time-off-request.entity';
@@ -23,6 +29,7 @@ export interface CreateTimeOffRequestDto {
 @Injectable()
 export class TimeOffService {
   constructor(
+    private readonly dataSource: DataSource,
     private readonly balanceService: BalanceService,
     private readonly balanceRepository: BalanceRepository,
   ) {}
@@ -142,6 +149,144 @@ export class TimeOffService {
       message: 'Request submitted. Awaiting HCM confirmation.',
       estimatedResolutionSeconds: 30,
     };
+  }
+
+  async getRequestById(requestId: string): Promise<{
+    requestId: string;
+    employeeId: string;
+    locationId: string;
+    leaveType: LeaveType;
+    startDate: string;
+    endDate: string;
+    daysRequested: number;
+    state: RequestState;
+    hcmExternalRef: string | null;
+    rejectionReason: string | null;
+    createdAt: string;
+    updatedAt: string;
+  }> {
+    const row = await this.dataSource.getRepository(TimeOffRequest).findOneByOrFail({ id: requestId });
+    return {
+      requestId: row.id,
+      employeeId: row.employeeId,
+      locationId: row.locationId,
+      leaveType: row.leaveType,
+      startDate: row.startDate,
+      endDate: row.endDate,
+      daysRequested: row.daysRequested,
+      state: row.state,
+      hcmExternalRef: row.hcmExternalRef,
+      rejectionReason: row.rejectionReason,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+    };
+  }
+
+  async cancelRequest(
+    requestId: string,
+    employeeId: string,
+  ): Promise<{ requestId: string; state: RequestState; message: string }> {
+    const req = await this.dataSource.getRepository(TimeOffRequest).findOneBy({ id: requestId });
+    if (!req) throw new RequestNotFoundError(`Request ${requestId} not found`);
+
+    if (req.state === RequestState.SUBMITTED) {
+      await this.balanceService.withBalanceLock(req.employeeId, req.locationId, req.leaveType, async (manager) => {
+        const bal = await this.balanceRepository.lockRow(
+          manager,
+          req.employeeId,
+          req.locationId,
+          req.leaveType,
+        );
+        if (!bal) throw new RequestNotFoundError(`Balance missing for request ${requestId}`);
+
+        RequestStateMachine.transition(RequestState.SUBMITTED, RequestState.CANCELLED);
+        const now = new Date().toISOString();
+        const oldPending = bal.pendingDays;
+        const nextPending = Math.max(0, oldPending - req.daysRequested);
+
+        await manager.getRepository(TimeOffRequest).update(
+          { id: req.id },
+          { state: RequestState.CANCELLED, lastOutboxEvent: null, updatedAt: now },
+        );
+        await manager.getRepository(Balance).update({ id: bal.id }, { pendingDays: nextPending, updatedAt: now });
+        if (oldPending !== nextPending) {
+          await manager.getRepository(BalanceChangeLog).insert({
+            id: randomUUID(),
+            balanceId: bal.id,
+            employeeId: bal.employeeId,
+            locationId: bal.locationId,
+            leaveType: bal.leaveType,
+            fieldChanged: 'pending_days',
+            oldValue: oldPending,
+            newValue: nextPending,
+            delta: nextPending - oldPending,
+            source: BalanceChangeSource.REQUEST,
+            sourceRef: req.id,
+            hcmTimestamp: null,
+            createdAt: now,
+          });
+        }
+        await manager.getRepository(RequestAuditLog).insert({
+          id: randomUUID(),
+          requestId: req.id,
+          fromState: RequestState.SUBMITTED,
+          toState: RequestState.CANCELLED,
+          actor: employeeId,
+          reason: null,
+          metadata: null,
+          createdAt: now,
+        });
+      });
+      return { requestId, state: RequestState.CANCELLED, message: 'Request cancelled successfully.' };
+    }
+
+    if (req.state === RequestState.APPROVED) {
+      RequestStateMachine.transition(RequestState.APPROVED, RequestState.CANCELLING);
+      const now = new Date().toISOString();
+      await this.dataSource.transaction(async (manager) => {
+        await manager.getRepository(TimeOffRequest).update(
+          { id: req.id },
+          {
+            state: RequestState.CANCELLING,
+            lastOutboxEvent: OutboxEventType.HCM_REVERSE,
+            updatedAt: now,
+          },
+        );
+        await manager.getRepository(Outbox).insert({
+          id: randomUUID(),
+          eventType: OutboxEventType.HCM_REVERSE,
+          payload: JSON.stringify({
+            requestId: req.id,
+            hcmTransactionId: req.hcmTransactionId ?? req.hcmExternalRef,
+            externalRef: req.hcmExternalRef ?? req.id,
+            employeeId: req.employeeId,
+            locationId: req.locationId,
+            leaveType: req.leaveType,
+            days: req.daysRequested,
+          }),
+          requestId: req.id,
+          status: 'PENDING',
+          attempts: 0,
+          createdAt: now,
+          processAfter: now,
+        });
+        await manager.getRepository(RequestAuditLog).insert({
+          id: randomUUID(),
+          requestId: req.id,
+          fromState: RequestState.APPROVED,
+          toState: RequestState.CANCELLING,
+          actor: employeeId,
+          reason: 'CANCELLATION_INITIATED',
+          metadata: null,
+          createdAt: now,
+        });
+      });
+      return { requestId, state: RequestState.CANCELLING, message: 'Reversal initiated.' };
+    }
+
+    throw new InvalidStateTransitionException(
+      `Cannot cancel request in ${req.state} state`,
+    );
   }
 
   private validateDto(dto: CreateTimeOffRequestDto): void {

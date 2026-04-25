@@ -12,17 +12,23 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.TimeOffService = void 0;
 const common_1 = require("@nestjs/common");
 const node_crypto_1 = require("node:crypto");
+const typeorm_1 = require("typeorm");
 const enums_1 = require("../../domain/enums");
 const exceptions_1 = require("../../domain/exceptions");
+const state_machine_1 = require("../../domain/state-machine");
 const balance_repository_1 = require("../balance/balance.repository");
 const balance_service_1 = require("../balance/balance.service");
+const balance_entity_1 = require("../balance/entities/balance.entity");
+const balance_change_log_entity_1 = require("../balance/entities/balance-change-log.entity");
 const outbox_entity_1 = require("./entities/outbox.entity");
 const request_audit_log_entity_1 = require("./entities/request-audit-log.entity");
 const time_off_request_entity_1 = require("./entities/time-off-request.entity");
 let TimeOffService = class TimeOffService {
+    dataSource;
     balanceService;
     balanceRepository;
-    constructor(balanceService, balanceRepository) {
+    constructor(dataSource, balanceService, balanceRepository) {
+        this.dataSource = dataSource;
         this.balanceService = balanceService;
         this.balanceRepository = balanceRepository;
     }
@@ -112,6 +118,110 @@ let TimeOffService = class TimeOffService {
             estimatedResolutionSeconds: 30,
         };
     }
+    async getRequestById(requestId) {
+        const row = await this.dataSource.getRepository(time_off_request_entity_1.TimeOffRequest).findOneByOrFail({ id: requestId });
+        return {
+            requestId: row.id,
+            employeeId: row.employeeId,
+            locationId: row.locationId,
+            leaveType: row.leaveType,
+            startDate: row.startDate,
+            endDate: row.endDate,
+            daysRequested: row.daysRequested,
+            state: row.state,
+            hcmExternalRef: row.hcmExternalRef,
+            rejectionReason: row.rejectionReason,
+            createdAt: row.createdAt,
+            updatedAt: row.updatedAt,
+        };
+    }
+    async cancelRequest(requestId, employeeId) {
+        const req = await this.dataSource.getRepository(time_off_request_entity_1.TimeOffRequest).findOneBy({ id: requestId });
+        if (!req)
+            throw new exceptions_1.RequestNotFoundError(`Request ${requestId} not found`);
+        if (req.state === enums_1.RequestState.SUBMITTED) {
+            await this.balanceService.withBalanceLock(req.employeeId, req.locationId, req.leaveType, async (manager) => {
+                const bal = await this.balanceRepository.lockRow(manager, req.employeeId, req.locationId, req.leaveType);
+                if (!bal)
+                    throw new exceptions_1.RequestNotFoundError(`Balance missing for request ${requestId}`);
+                state_machine_1.RequestStateMachine.transition(enums_1.RequestState.SUBMITTED, enums_1.RequestState.CANCELLED);
+                const now = new Date().toISOString();
+                const oldPending = bal.pendingDays;
+                const nextPending = Math.max(0, oldPending - req.daysRequested);
+                await manager.getRepository(time_off_request_entity_1.TimeOffRequest).update({ id: req.id }, { state: enums_1.RequestState.CANCELLED, lastOutboxEvent: null, updatedAt: now });
+                await manager.getRepository(balance_entity_1.Balance).update({ id: bal.id }, { pendingDays: nextPending, updatedAt: now });
+                if (oldPending !== nextPending) {
+                    await manager.getRepository(balance_change_log_entity_1.BalanceChangeLog).insert({
+                        id: (0, node_crypto_1.randomUUID)(),
+                        balanceId: bal.id,
+                        employeeId: bal.employeeId,
+                        locationId: bal.locationId,
+                        leaveType: bal.leaveType,
+                        fieldChanged: 'pending_days',
+                        oldValue: oldPending,
+                        newValue: nextPending,
+                        delta: nextPending - oldPending,
+                        source: enums_1.BalanceChangeSource.REQUEST,
+                        sourceRef: req.id,
+                        hcmTimestamp: null,
+                        createdAt: now,
+                    });
+                }
+                await manager.getRepository(request_audit_log_entity_1.RequestAuditLog).insert({
+                    id: (0, node_crypto_1.randomUUID)(),
+                    requestId: req.id,
+                    fromState: enums_1.RequestState.SUBMITTED,
+                    toState: enums_1.RequestState.CANCELLED,
+                    actor: employeeId,
+                    reason: null,
+                    metadata: null,
+                    createdAt: now,
+                });
+            });
+            return { requestId, state: enums_1.RequestState.CANCELLED, message: 'Request cancelled successfully.' };
+        }
+        if (req.state === enums_1.RequestState.APPROVED) {
+            state_machine_1.RequestStateMachine.transition(enums_1.RequestState.APPROVED, enums_1.RequestState.CANCELLING);
+            const now = new Date().toISOString();
+            await this.dataSource.transaction(async (manager) => {
+                await manager.getRepository(time_off_request_entity_1.TimeOffRequest).update({ id: req.id }, {
+                    state: enums_1.RequestState.CANCELLING,
+                    lastOutboxEvent: enums_1.OutboxEventType.HCM_REVERSE,
+                    updatedAt: now,
+                });
+                await manager.getRepository(outbox_entity_1.Outbox).insert({
+                    id: (0, node_crypto_1.randomUUID)(),
+                    eventType: enums_1.OutboxEventType.HCM_REVERSE,
+                    payload: JSON.stringify({
+                        requestId: req.id,
+                        hcmTransactionId: req.hcmTransactionId ?? req.hcmExternalRef,
+                        externalRef: req.hcmExternalRef ?? req.id,
+                        employeeId: req.employeeId,
+                        locationId: req.locationId,
+                        leaveType: req.leaveType,
+                        days: req.daysRequested,
+                    }),
+                    requestId: req.id,
+                    status: 'PENDING',
+                    attempts: 0,
+                    createdAt: now,
+                    processAfter: now,
+                });
+                await manager.getRepository(request_audit_log_entity_1.RequestAuditLog).insert({
+                    id: (0, node_crypto_1.randomUUID)(),
+                    requestId: req.id,
+                    fromState: enums_1.RequestState.APPROVED,
+                    toState: enums_1.RequestState.CANCELLING,
+                    actor: employeeId,
+                    reason: 'CANCELLATION_INITIATED',
+                    metadata: null,
+                    createdAt: now,
+                });
+            });
+            return { requestId, state: enums_1.RequestState.CANCELLING, message: 'Reversal initiated.' };
+        }
+        throw new exceptions_1.InvalidStateTransitionException(`Cannot cancel request in ${req.state} state`);
+    }
     validateDto(dto) {
         if (dto.daysRequested <= 0) {
             throw new common_1.BadRequestException('daysRequested must be > 0');
@@ -141,7 +251,8 @@ let TimeOffService = class TimeOffService {
 exports.TimeOffService = TimeOffService;
 exports.TimeOffService = TimeOffService = __decorate([
     (0, common_1.Injectable)(),
-    __metadata("design:paramtypes", [balance_service_1.BalanceService,
+    __metadata("design:paramtypes", [typeorm_1.DataSource,
+        balance_service_1.BalanceService,
         balance_repository_1.BalanceRepository])
 ], TimeOffService);
 //# sourceMappingURL=time-off.service.js.map

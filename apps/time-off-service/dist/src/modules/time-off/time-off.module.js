@@ -10,6 +10,7 @@ exports.TimeOffModule = void 0;
 const common_1 = require("@nestjs/common");
 const typeorm_1 = require("@nestjs/typeorm");
 const balance_module_1 = require("../balance/balance.module");
+const outbox_module_1 = require("../outbox/outbox.module");
 const outbox_entity_1 = require("./entities/outbox.entity");
 const request_audit_log_entity_1 = require("./entities/request-audit-log.entity");
 const time_off_request_entity_1 = require("./entities/time-off-request.entity");
@@ -20,7 +21,7 @@ let TimeOffModule = class TimeOffModule {
 exports.TimeOffModule = TimeOffModule;
 exports.TimeOffModule = TimeOffModule = __decorate([
     (0, common_1.Module)({
-        imports: [typeorm_1.TypeOrmModule.forFeature([time_off_request_entity_1.TimeOffRequest, outbox_entity_1.Outbox, request_audit_log_entity_1.RequestAuditLog]), balance_module_1.BalanceModule],
+        imports: [typeorm_1.TypeOrmModule.forFeature([time_off_request_entity_1.TimeOffRequest, outbox_entity_1.Outbox, request_audit_log_entity_1.RequestAuditLog]), balance_module_1.BalanceModule, outbox_module_1.OutboxModule],
         controllers: [time_off_controller_1.TimeOffController],
         providers: [time_off_service_1.TimeOffService],
     })
