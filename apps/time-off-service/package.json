@@ -11,7 +11,8 @@
     "test": "jest --passWithNoTests",
     "test:unit": "jest --passWithNoTests --selectProjects unit",
     "test:integration": "jest --passWithNoTests --selectProjects integration",
-    "test:cov": "jest --coverage --passWithNoTests",
+    "test:e2e": "npm run test:integration",
+    "test:cov": "jest --coverage --runInBand --passWithNoTests",
     "lint": "eslint . --max-warnings=0",
     "format": "prettier -w ."
   },

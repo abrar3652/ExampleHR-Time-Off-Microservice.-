@@ -12,6 +12,7 @@ const core_1 = require("@nestjs/core");
 const config_1 = require("@nestjs/config");
 const typeorm_1 = require("@nestjs/typeorm");
 const global_exception_filter_1 = require("./filters/global-exception.filter");
+const health_controller_1 = require("./health.controller");
 const balance_module_1 = require("./modules/balance/balance.module");
 const idempotency_interceptor_1 = require("./modules/idempotency/idempotency.interceptor");
 const idempotency_module_1 = require("./modules/idempotency/idempotency.module");
@@ -26,7 +27,7 @@ exports.AppModule = AppModule = __decorate([
             config_1.ConfigModule.forRoot({ isGlobal: true }),
             typeorm_1.TypeOrmModule.forRoot({
                 type: 'better-sqlite3',
-                database: process.env.DB_PATH ?? './data/time_off.sqlite',
+                database: process.env.DB_PATH ?? `./data/time_off_${process.env.JEST_WORKER_ID ?? 'dev'}.sqlite`,
                 enableWAL: true,
                 prepareDatabase: (db) => {
                     db.pragma('busy_timeout = 5000');
@@ -39,6 +40,7 @@ exports.AppModule = AppModule = __decorate([
             sync_module_1.SyncModule,
             time_off_module_1.TimeOffModule,
         ],
+        controllers: [health_controller_1.HealthController],
         providers: [
             { provide: core_1.APP_FILTER, useClass: global_exception_filter_1.GlobalExceptionFilter },
             { provide: core_1.APP_INTERCEPTOR, useClass: idempotency_interceptor_1.IdempotencyInterceptor },

@@ -85,7 +85,7 @@ function makeHcmClient(baseURL: string): HcmClient {
         return { success: false, reason: 'NETWORK_ERROR' };
       }
     },
-  } as HcmClient;
+  } as unknown as HcmClient;
 }
 
 describe('hcm-network-cut.spec (FS-9)', () => {

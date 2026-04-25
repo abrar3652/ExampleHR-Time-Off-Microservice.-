@@ -51,5 +51,8 @@ describe('RequestStateMachine (exhaustive transition matrix)', () => {
             expect(state_machine_1.RequestStateMachine.getValidTransitions(from)).toEqual(VALID_MAP[from]);
         }
     });
+    it('getValidTransitions returns empty for unknown state value', () => {
+        expect(state_machine_1.RequestStateMachine.getValidTransitions('UNKNOWN')).toEqual([]);
+    });
 });
 //# sourceMappingURL=state-machine.spec.js.map

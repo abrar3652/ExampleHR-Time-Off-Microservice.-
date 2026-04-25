@@ -4,7 +4,6 @@ import { randomUUID } from 'node:crypto';
 import { resolve } from 'node:path';
 import { Test } from '@nestjs/testing';
 import { DataSource } from 'typeorm';
-import request from 'supertest';
 import axios from 'axios';
 
 import { AppModule } from '../../src/app.module';
@@ -65,7 +64,7 @@ function makeHcmClient(baseURL: string): HcmClient {
         return { success: false, reason: 'NETWORK_ERROR' };
       }
     },
-  } as HcmClient;
+  } as unknown as HcmClient;
 }
 
 describe('outbox-retry.spec', () => {
@@ -174,6 +173,223 @@ describe('outbox-retry.spec', () => {
     const req = await ds.getRepository(TimeOffRequest).findOneByOrFail({ id: reqId });
     expect(outbox.status).toBe('DONE');
     expect(req.state).toBe('APPROVED');
+  });
+
+  it('safety guard marks record FAILED when attempts exceed max', async () => {
+    const now = new Date().toISOString();
+    await hcm.setBalance('emp-retry-2', 'loc-nyc', 'ANNUAL', { totalDays: 5, usedDays: 0, hcmLastUpdatedAt: now });
+    await ds.getRepository(Balance).upsert(
+      {
+        id: randomUUID(),
+        employeeId: 'emp-retry-2',
+        locationId: 'loc-nyc',
+        leaveType: LeaveType.ANNUAL,
+        totalDays: 5,
+        usedDays: 0,
+        pendingDays: 1,
+        hcmLastUpdatedAt: now,
+        syncedAt: now,
+        createdAt: now,
+        updatedAt: now,
+      },
+      ['employeeId', 'locationId', 'leaveType'],
+    );
+    const requestId = randomUUID();
+    await ds.getRepository(TimeOffRequest).insert({
+      id: requestId,
+      idempotencyKey: randomUUID(),
+      employeeId: 'emp-retry-2',
+      locationId: 'loc-nyc',
+      leaveType: LeaveType.ANNUAL,
+      startDate: '2025-03-07',
+      endDate: '2025-03-08',
+      daysRequested: 1,
+      state: RequestState.PENDING_HCM,
+      lastOutboxEvent: OutboxEventType.HCM_DEDUCT,
+      hcmExternalRef: requestId,
+      hcmTransactionId: null,
+      hcmResponseCode: null,
+      hcmResponseBody: null,
+      rejectionReason: null,
+      failureReason: null,
+      retryCount: 3,
+      createdBy: 'emp-retry-2',
+      approvedBy: null,
+      createdAt: now,
+      updatedAt: now,
+    });
+    await ds.getRepository(Outbox).insert({
+      id: randomUUID(),
+      eventType: OutboxEventType.HCM_DEDUCT,
+      payload: JSON.stringify({
+        externalRef: requestId,
+        employeeId: 'emp-retry-2',
+        locationId: 'loc-nyc',
+        leaveType: 'ANNUAL',
+        daysRequested: 1,
+        startDate: '2025-03-07',
+        endDate: '2025-03-08',
+      }),
+      requestId,
+      status: 'PENDING',
+      attempts: 3,
+      lastAttemptedAt: null,
+      lastError: null,
+      createdAt: now,
+      processAfter: now,
+    });
+
+    await sleep(2000);
+
+    const outbox = await ds.getRepository(Outbox).findOneByOrFail({ requestId });
+    const requestRow = await ds.getRepository(TimeOffRequest).findOneByOrFail({ id: requestId });
+    expect(outbox.status).toBe('FAILED');
+    expect(outbox.lastError).toBe('SAFETY_GUARD_EXCEEDED');
+    expect(requestRow.state).toBe(RequestState.FAILED);
+  });
+
+  it('reverse client error marks FAILED with REVERSAL_REJECTED', async () => {
+    const now = new Date().toISOString();
+    await hcm.setBalance('emp-retry-3', 'loc-nyc', 'ANNUAL', { totalDays: 5, usedDays: 1, hcmLastUpdatedAt: now });
+    await ds.getRepository(Balance).upsert(
+      {
+        id: randomUUID(),
+        employeeId: 'emp-retry-3',
+        locationId: 'loc-nyc',
+        leaveType: LeaveType.ANNUAL,
+        totalDays: 5,
+        usedDays: 1,
+        pendingDays: 0,
+        hcmLastUpdatedAt: now,
+        syncedAt: now,
+        createdAt: now,
+        updatedAt: now,
+      },
+      ['employeeId', 'locationId', 'leaveType'],
+    );
+    const requestId = randomUUID();
+    await ds.getRepository(TimeOffRequest).insert({
+      id: requestId,
+      idempotencyKey: randomUUID(),
+      employeeId: 'emp-retry-3',
+      locationId: 'loc-nyc',
+      leaveType: LeaveType.ANNUAL,
+      startDate: '2025-03-07',
+      endDate: '2025-03-08',
+      daysRequested: 1,
+      state: RequestState.CANCELLING,
+      lastOutboxEvent: OutboxEventType.HCM_REVERSE,
+      hcmExternalRef: requestId,
+      hcmTransactionId: 'missing-txn',
+      hcmResponseCode: null,
+      hcmResponseBody: null,
+      rejectionReason: null,
+      failureReason: null,
+      retryCount: 0,
+      createdBy: 'emp-retry-3',
+      approvedBy: null,
+      createdAt: now,
+      updatedAt: now,
+    });
+    await ds.getRepository(Outbox).insert({
+      id: randomUUID(),
+      eventType: OutboxEventType.HCM_REVERSE,
+      payload: JSON.stringify({
+        externalRef: requestId,
+        hcmTransactionId: 'missing-txn',
+        employeeId: 'emp-retry-3',
+        locationId: 'loc-nyc',
+        leaveType: 'ANNUAL',
+        days: 1,
+      }),
+      requestId,
+      status: 'PENDING',
+      attempts: 0,
+      lastAttemptedAt: null,
+      lastError: null,
+      createdAt: now,
+      processAfter: now,
+    });
+
+    await sleep(2500);
+
+    const outbox = await ds.getRepository(Outbox).findOneByOrFail({ requestId });
+    const requestRow = await ds.getRepository(TimeOffRequest).findOneByOrFail({ id: requestId });
+    expect(outbox.status).toBe('FAILED');
+    expect(outbox.lastError).toBe('REVERSAL_REJECTED');
+    expect(requestRow.state).toBe(RequestState.FAILED);
+  });
+
+  it('reverse server error schedules retry', async () => {
+    const now = new Date().toISOString();
+    await hcm.setBalance('emp-retry-4', 'loc-nyc', 'ANNUAL', { totalDays: 5, usedDays: 1, hcmLastUpdatedAt: now });
+    await hcm.setNextCallBehavior('reverse', '500', 1);
+    await ds.getRepository(Balance).upsert(
+      {
+        id: randomUUID(),
+        employeeId: 'emp-retry-4',
+        locationId: 'loc-nyc',
+        leaveType: LeaveType.ANNUAL,
+        totalDays: 5,
+        usedDays: 1,
+        pendingDays: 0,
+        hcmLastUpdatedAt: now,
+        syncedAt: now,
+        createdAt: now,
+        updatedAt: now,
+      },
+      ['employeeId', 'locationId', 'leaveType'],
+    );
+    const requestId = randomUUID();
+    await ds.getRepository(TimeOffRequest).insert({
+      id: requestId,
+      idempotencyKey: randomUUID(),
+      employeeId: 'emp-retry-4',
+      locationId: 'loc-nyc',
+      leaveType: LeaveType.ANNUAL,
+      startDate: '2025-03-07',
+      endDate: '2025-03-08',
+      daysRequested: 1,
+      state: RequestState.CANCELLING,
+      lastOutboxEvent: OutboxEventType.HCM_REVERSE,
+      hcmExternalRef: requestId,
+      hcmTransactionId: 'txn-reverse',
+      hcmResponseCode: null,
+      hcmResponseBody: null,
+      rejectionReason: null,
+      failureReason: null,
+      retryCount: 0,
+      createdBy: 'emp-retry-4',
+      approvedBy: null,
+      createdAt: now,
+      updatedAt: now,
+    });
+    await ds.getRepository(Outbox).insert({
+      id: randomUUID(),
+      eventType: OutboxEventType.HCM_REVERSE,
+      payload: JSON.stringify({
+        externalRef: requestId,
+        hcmTransactionId: 'txn-reverse',
+        employeeId: 'emp-retry-4',
+        locationId: 'loc-nyc',
+        leaveType: 'ANNUAL',
+        days: 1,
+      }),
+      requestId,
+      status: 'PENDING',
+      attempts: 0,
+      lastAttemptedAt: null,
+      lastError: null,
+      createdAt: now,
+      processAfter: now,
+    });
+
+    await sleep(2500);
+
+    const outbox = await ds.getRepository(Outbox).findOneByOrFail({ requestId });
+    expect(outbox.status).toBe('PENDING');
+    expect(outbox.attempts).toBe(1);
+    expect(outbox.lastError).toBe('SERVER_ERROR');
   });
 });
 

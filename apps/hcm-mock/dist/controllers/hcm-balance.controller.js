@@ -103,7 +103,7 @@ let HcmBalanceController = class HcmBalanceController {
             });
             res.status(200).json(body);
         }
-        catch (err) {
+        catch {
             const body = { error: 'INTERNAL_SERVER_ERROR', message: 'Unexpected mock HCM error' };
             await this.callLog.append({
                 endpoint,

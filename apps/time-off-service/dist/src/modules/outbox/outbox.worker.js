@@ -24,6 +24,8 @@ let OutboxWorker = OutboxWorker_1 = class OutboxWorker {
         this.processor = processor;
     }
     async poll() {
+        if (process.env.DISABLE_BACKGROUND_WORKERS === '1')
+            return;
         await this.outboxRepo.resetStuckProcessing();
         const claimed = await this.outboxRepo.claimPending(5);
         for (const record of claimed) {

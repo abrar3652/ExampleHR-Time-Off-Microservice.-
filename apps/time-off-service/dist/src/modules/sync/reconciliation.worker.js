@@ -29,6 +29,8 @@ let ReconciliationWorker = ReconciliationWorker_1 = class ReconciliationWorker {
         this.hcmClient = hcmClient;
     }
     async run() {
+        if (process.env.DISABLE_BACKGROUND_WORKERS === '1')
+            return;
         const runId = (0, node_crypto_1.randomUUID)();
         this.logger.log({ runId, event: 'reconciliation_start' });
         const balances = await this.dataSource.getRepository(balance_entity_1.Balance).find();

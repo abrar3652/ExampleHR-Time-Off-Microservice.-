@@ -113,9 +113,9 @@ let ControlController = class ControlController {
         }));
     }
     async reset() {
-        await this.dataSource.getRepository(hcm_call_log_entity_1.HcmCallLog).delete({});
-        await this.dataSource.getRepository(hcm_transaction_entity_1.HcmTransaction).delete({});
-        await this.dataSource.getRepository(hcm_balance_entity_1.HcmBalance).delete({});
+        await this.dataSource.getRepository(hcm_call_log_entity_1.HcmCallLog).clear();
+        await this.dataSource.getRepository(hcm_transaction_entity_1.HcmTransaction).clear();
+        await this.dataSource.getRepository(hcm_balance_entity_1.HcmBalance).clear();
         await this.chaos.resetAll();
         await this.clock.reset();
         return { ok: true };

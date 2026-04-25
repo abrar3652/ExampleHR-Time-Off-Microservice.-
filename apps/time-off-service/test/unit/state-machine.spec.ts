@@ -56,5 +56,9 @@ describe('RequestStateMachine (exhaustive transition matrix)', () => {
       expect(RequestStateMachine.getValidTransitions(from)).toEqual(VALID_MAP[from]);
     }
   });
+
+  it('getValidTransitions returns empty for unknown state value', () => {
+    expect(RequestStateMachine.getValidTransitions('UNKNOWN' as RequestState)).toEqual([]);
+  });
 });
 

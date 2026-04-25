@@ -16,15 +16,18 @@ describe('sync-batch.e2e', () => {
     let ds;
     beforeEach(async () => {
         process.env.DB_PATH = ':memory:';
+        process.env.DISABLE_BACKGROUND_WORKERS = '1';
         const mod = await testing_1.Test.createTestingModule({ imports: [app_module_1.AppModule] }).compile();
         app = mod.createNestApplication();
         await app.init();
         ds = app.get(typeorm_1.DataSource);
     });
     afterEach(async () => {
+        delete process.env.DISABLE_BACKGROUND_WORKERS;
         await app.close();
     });
     it('older hcm_last_updated_at is skipped and checkpoint is updated', async () => {
+        await ds.getRepository(sync_checkpoint_entity_1.SyncCheckpoint).delete({ id: 'singleton' });
         await ds.getRepository(balance_entity_1.Balance).delete({
             employeeId: 'emp-001',
             locationId: 'loc-nyc',
