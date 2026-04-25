@@ -13,4 +13,5 @@ export declare class BalanceService {
     withBalanceLock<T>(employeeId: string, locationId: string, leaveType: LeaveType, fn: (manager: EntityManager, balance: Balance) => Promise<T>): Promise<T>;
     private isFresh;
     private writeRealTimeSyncChangeLogs;
+    private withImmediateTransaction;
 }

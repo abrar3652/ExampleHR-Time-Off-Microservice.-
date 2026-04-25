@@ -48,7 +48,7 @@ let BalanceService = BalanceService_1 = class BalanceService {
             throw new exceptions_1.BalanceNotFoundError(`No balance found for employee ${employeeId} at location ${locationId} for leave type ${leaveType}`);
         }
         const now = new Date().toISOString();
-        return this.dataSource.transaction('IMMEDIATE', async (manager) => {
+        return this.withImmediateTransaction(async (manager) => {
             const current = await manager
                 .getRepository(balance_entity_1.Balance)
                 .findOne({ where: { employeeId, locationId, leaveType } });
@@ -74,13 +74,24 @@ let BalanceService = BalanceService_1 = class BalanceService {
                     createdAt: now,
                     updatedAt: now,
                 };
-            await manager.getRepository(balance_entity_1.Balance).save(next);
+            if (current) {
+                await manager.getRepository(balance_entity_1.Balance).update({ id: current.id }, {
+                    totalDays: next.totalDays,
+                    usedDays: next.usedDays,
+                    hcmLastUpdatedAt: next.hcmLastUpdatedAt,
+                    syncedAt: next.syncedAt,
+                    updatedAt: next.updatedAt,
+                });
+            }
+            else {
+                await manager.getRepository(balance_entity_1.Balance).insert(next);
+            }
             await this.writeRealTimeSyncChangeLogs(manager, current, next);
             return next;
         });
     }
     async withBalanceLock(employeeId, locationId, leaveType, fn) {
-        return this.dataSource.transaction('IMMEDIATE', async (manager) => {
+        return this.withImmediateTransaction(async (manager) => {
             let balance = await manager
                 .getRepository(balance_entity_1.Balance)
                 .findOne({ where: { employeeId, locationId, leaveType } });
@@ -105,7 +116,7 @@ let BalanceService = BalanceService_1 = class BalanceService {
                     createdAt: now,
                     updatedAt: now,
                 });
-                await manager.getRepository(balance_entity_1.Balance).save(balance);
+                await manager.getRepository(balance_entity_1.Balance).insert(balance);
             }
             return fn(manager, balance);
         });
@@ -140,6 +151,9 @@ let BalanceService = BalanceService_1 = class BalanceService {
         if (rows.length > 0) {
             await manager.getRepository(balance_change_log_entity_1.BalanceChangeLog).insert(rows);
         }
+    }
+    async withImmediateTransaction(fn) {
+        return this.dataSource.transaction((manager) => fn(manager));
     }
 };
 exports.BalanceService = BalanceService;

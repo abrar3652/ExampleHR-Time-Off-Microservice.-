@@ -15,6 +15,7 @@ const global_exception_filter_1 = require("./filters/global-exception.filter");
 const balance_module_1 = require("./modules/balance/balance.module");
 const idempotency_interceptor_1 = require("./modules/idempotency/idempotency.interceptor");
 const idempotency_module_1 = require("./modules/idempotency/idempotency.module");
+const time_off_module_1 = require("./modules/time-off/time-off.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -34,6 +35,7 @@ exports.AppModule = AppModule = __decorate([
             }),
             balance_module_1.BalanceModule,
             idempotency_module_1.IdempotencyModule,
+            time_off_module_1.TimeOffModule,
         ],
         providers: [
             { provide: core_1.APP_FILTER, useClass: global_exception_filter_1.GlobalExceptionFilter },

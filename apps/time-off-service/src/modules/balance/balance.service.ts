@@ -49,7 +49,7 @@ export class BalanceService {
 
     const now = new Date().toISOString();
 
-    return this.dataSource.transaction('IMMEDIATE' as any, async (manager) => {
+    return this.withImmediateTransaction(async (manager) => {
       const current = await manager
         .getRepository(Balance)
         .findOne({ where: { employeeId, locationId, leaveType } });
@@ -77,7 +77,20 @@ export class BalanceService {
             updatedAt: now,
           };
 
-      await manager.getRepository(Balance).save(next);
+      if (current) {
+        await manager.getRepository(Balance).update(
+          { id: current.id },
+          {
+            totalDays: next.totalDays,
+            usedDays: next.usedDays,
+            hcmLastUpdatedAt: next.hcmLastUpdatedAt,
+            syncedAt: next.syncedAt,
+            updatedAt: next.updatedAt,
+          },
+        );
+      } else {
+        await manager.getRepository(Balance).insert(next);
+      }
       await this.writeRealTimeSyncChangeLogs(manager, current, next);
       return next;
     });
@@ -89,7 +102,7 @@ export class BalanceService {
     leaveType: LeaveType,
     fn: (manager: EntityManager, balance: Balance) => Promise<T>,
   ): Promise<T> {
-    return this.dataSource.transaction('IMMEDIATE' as any, async (manager) => {
+    return this.withImmediateTransaction(async (manager) => {
       let balance = await manager
         .getRepository(Balance)
         .findOne({ where: { employeeId, locationId, leaveType } });
@@ -117,7 +130,7 @@ export class BalanceService {
           createdAt: now,
           updatedAt: now,
         });
-        await manager.getRepository(Balance).save(balance);
+        await manager.getRepository(Balance).insert(balance);
       }
 
       return fn(manager, balance);
@@ -167,6 +180,10 @@ export class BalanceService {
     if (rows.length > 0) {
       await manager.getRepository(BalanceChangeLog).insert(rows);
     }
+  }
+
+  private async withImmediateTransaction<T>(fn: (manager: EntityManager) => Promise<T>): Promise<T> {
+    return this.dataSource.transaction((manager) => fn(manager));
   }
 }
 

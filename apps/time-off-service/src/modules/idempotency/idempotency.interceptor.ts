@@ -6,7 +6,7 @@ import {
   Injectable,
   NestInterceptor,
 } from '@nestjs/common';
-import { Observable, catchError, finalize, from, of, switchMap, tap, throwError } from 'rxjs';
+import { Observable, catchError, finalize, from, map, of, switchMap, throwError } from 'rxjs';
 
 import { IdempotencyRepository } from './idempotency.repository';
 
@@ -100,10 +100,15 @@ export class IdempotencyInterceptor implements NestInterceptor {
       switchMap((pre) => {
         if (pre.handled) return of(null);
         return next.handle().pipe(
-          tap(async (responseBody) => {
-            const statusCode = http.getResponse<any>().statusCode;
-            await this.idempotencyRepo.markComplete(key, statusCode, JSON.stringify(responseBody));
-          }),
+          switchMap((responseBody) =>
+            from(
+              this.idempotencyRepo.markComplete(
+                key,
+                http.getResponse<any>().statusCode,
+                JSON.stringify(responseBody),
+              ),
+            ).pipe(map(() => responseBody)),
+          ),
           catchError((err) =>
             from(this.idempotencyRepo.delete(key).catch(() => undefined)).pipe(
               switchMap(() => throwError(() => err)),

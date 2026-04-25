@@ -88,12 +88,13 @@ describe('BalanceService.getOrFetchBalance', () => {
         findOne: jest.fn().mockResolvedValue(existing),
         save: jest.fn().mockImplementation(async (x) => x),
         insert: jest.fn().mockResolvedValue(undefined),
+        update: jest.fn().mockResolvedValue(undefined),
       }),
       create: (_cls: any, obj: any) => obj,
     };
 
     const dataSource = {
-      transaction: jest.fn().mockImplementation(async (_mode: any, fn: any) => fn(manager)),
+      transaction: jest.fn().mockImplementation(async (fn: any) => fn(manager)),
     } as any;
 
     const svc = new BalanceService(dataSource, repo, fetcher);

@@ -96,10 +96,7 @@ let IdempotencyInterceptor = class IdempotencyInterceptor {
         }), (0, rxjs_1.switchMap)((pre) => {
             if (pre.handled)
                 return (0, rxjs_1.of)(null);
-            return next.handle().pipe((0, rxjs_1.tap)(async (responseBody) => {
-                const statusCode = http.getResponse().statusCode;
-                await this.idempotencyRepo.markComplete(key, statusCode, JSON.stringify(responseBody));
-            }), (0, rxjs_1.catchError)((err) => (0, rxjs_1.from)(this.idempotencyRepo.delete(key).catch(() => undefined)).pipe((0, rxjs_1.switchMap)(() => (0, rxjs_1.throwError)(() => err)))));
+            return next.handle().pipe((0, rxjs_1.switchMap)((responseBody) => (0, rxjs_1.from)(this.idempotencyRepo.markComplete(key, http.getResponse().statusCode, JSON.stringify(responseBody))).pipe((0, rxjs_1.map)(() => responseBody))), (0, rxjs_1.catchError)((err) => (0, rxjs_1.from)(this.idempotencyRepo.delete(key).catch(() => undefined)).pipe((0, rxjs_1.switchMap)(() => (0, rxjs_1.throwError)(() => err)))));
         }), (0, rxjs_1.finalize)(() => {
             IdempotencyInterceptor_1.inFlight.delete(key);
             deferred.resolve();

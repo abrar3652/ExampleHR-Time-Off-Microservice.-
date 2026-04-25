@@ -7,6 +7,7 @@ import { GlobalExceptionFilter } from './filters/global-exception.filter';
 import { BalanceModule } from './modules/balance/balance.module';
 import { IdempotencyInterceptor } from './modules/idempotency/idempotency.interceptor';
 import { IdempotencyModule } from './modules/idempotency/idempotency.module';
+import { TimeOffModule } from './modules/time-off/time-off.module';
 
 @Module({
   imports: [
@@ -23,6 +24,7 @@ import { IdempotencyModule } from './modules/idempotency/idempotency.module';
     }),
     BalanceModule,
     IdempotencyModule,
+    TimeOffModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: GlobalExceptionFilter },
