@@ -13,6 +13,8 @@ const config_1 = require("@nestjs/config");
 const typeorm_1 = require("@nestjs/typeorm");
 const global_exception_filter_1 = require("./filters/global-exception.filter");
 const balance_module_1 = require("./modules/balance/balance.module");
+const idempotency_interceptor_1 = require("./modules/idempotency/idempotency.interceptor");
+const idempotency_module_1 = require("./modules/idempotency/idempotency.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -31,8 +33,12 @@ exports.AppModule = AppModule = __decorate([
                 synchronize: true,
             }),
             balance_module_1.BalanceModule,
+            idempotency_module_1.IdempotencyModule,
         ],
-        providers: [{ provide: core_1.APP_FILTER, useClass: global_exception_filter_1.GlobalExceptionFilter }],
+        providers: [
+            { provide: core_1.APP_FILTER, useClass: global_exception_filter_1.GlobalExceptionFilter },
+            { provide: core_1.APP_INTERCEPTOR, useClass: idempotency_interceptor_1.IdempotencyInterceptor },
+        ],
     })
 ], AppModule);
 //# sourceMappingURL=app.module.js.map
